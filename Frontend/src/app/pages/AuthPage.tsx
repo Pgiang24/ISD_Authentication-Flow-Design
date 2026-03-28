@@ -50,7 +50,7 @@ function PasswordStrength({ password }: { password: string }) {
 export default function AuthPage() {
   const navigate = useNavigate();
   const { login, register } = useAuth();
-  const [mode, setMode]               = useState<Mode>("login");
+  const [mode, setMode]                 = useState<Mode>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm]   = useState(false);
   const [loading, setLoading]           = useState(false);
@@ -62,13 +62,19 @@ export default function AuthPage() {
   });
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((f) => ({ ...f, [field]: e.target.value }));
+    // Chỉ cho nhập số với field phone
+    if (field === "phone") {
+      const onlyNumbers = e.target.value.replace(/[^0-9]/g, "");
+      setForm((f) => ({ ...f, phone: onlyNumbers }));
+    } else {
+      setForm((f) => ({ ...f, [field]: e.target.value }));
+    }
     setError("");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.email || !form.password) { setError("Please fill in all fields."); return; }
+    if (!form.email || !form.password) { setError("Vui lòng điền đầy đủ thông tin."); return; }
     setLoading(true);
     const result = await login(form.email, form.password);
     setLoading(false);
@@ -78,23 +84,40 @@ export default function AuthPage() {
       if (user?.role === "admin") navigate("/admin");
       else navigate("/");
     } else {
-      setError(result.error || "Login failed.");
+      setError(result.error || "Đăng nhập thất bại.");
     }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password || !form.confirmPassword) {
-      setError("Please fill in all required fields."); return;
+      setError("Vui lòng điền đầy đủ các trường bắt buộc."); return;
     }
-    if (form.password !== form.confirmPassword) { setError("Passwords do not match."); return; }
-    if (form.password.length < 8) { setError("Password must be at least 8 characters."); return; }
+
+    // Validate số điện thoại: bắt buộc 10 số, bắt đầu bằng 0
+    if (form.phone) {
+      if (!/^0[0-9]{9}$/.test(form.phone)) {
+        setError("Số điện thoại phải đủ 10 số và bắt đầu bằng số 0 (vd: 0912345678).");
+        return;
+      }
+    }
+
+    if (form.password !== form.confirmPassword) { setError("Mật khẩu xác nhận không khớp."); return; }
+    if (form.password.length < 8) { setError("Mật khẩu phải ít nhất 8 ký tự."); return; }
+
     setLoading(true);
     const result = await register(form.name, form.email, form.password, form.phone);
     setLoading(false);
     if (result.success) navigate("/");
-    else setError(result.error || "Registration failed.");
+    else setError(result.error || "Đăng ký thất bại.");
   };
+
+  // Kiểm tra phone realtime
+  const phoneError = form.phone && !/^0[0-9]{9}$/.test(form.phone)
+    ? form.phone.length < 10
+      ? `Còn thiếu ${10 - form.phone.length} số`
+      : "Số điện thoại phải bắt đầu bằng 0"
+    : null;
 
   return (
     <div className="min-h-screen flex">
@@ -188,7 +211,7 @@ export default function AuthPage() {
                       type="email"
                       value={form.email}
                       onChange={set("email")}
-                      placeholder="you@example.com"
+                      placeholder="you@gmail.com"
                       autoComplete="email"
                       className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${error && !form.email ? "border-red-400 bg-red-50" : "border-gray-200"}`}
                     />
@@ -205,11 +228,8 @@ export default function AuthPage() {
                         autoComplete="current-password"
                         className={`w-full px-4 py-3 pr-12 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${error && !form.password ? "border-red-400 bg-red-50" : "border-gray-200"}`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
+                      <button type="button" onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
@@ -218,12 +238,8 @@ export default function AuthPage() {
 
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded accent-[#7C2D12]"
-                    />
+                    <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded accent-[#7C2D12]" />
                     <span className="text-sm text-gray-600">Remember me</span>
                   </label>
                   <button type="button" className="text-sm text-[#7C2D12] hover:underline font-medium">
@@ -235,11 +251,8 @@ export default function AuthPage() {
                   <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-[#7C2D12] hover:bg-[#6B2510] text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-                >
+                <button type="submit" disabled={loading}
+                  className="w-full py-3.5 bg-[#7C2D12] hover:bg-[#6B2510] text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-70">
                   {loading && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                   {loading ? "Signing in..." : "Log In"}
                 </button>
@@ -250,10 +263,6 @@ export default function AuthPage() {
                     Sign up
                   </button>
                 </p>
-
-                <div className="pt-2 rounded-xl bg-[#D4A853]/10 border border-[#D4A853]/30 p-3 text-xs text-gray-600">
-                  <strong>Demo:</strong> customer@alefarms.com / password123 &nbsp;|&nbsp; admin@alefarms.com / admin123
-                </div>
               </form>
             ) : (
               <form onSubmit={handleRegister} className="space-y-5" autoComplete="on">
@@ -282,21 +291,34 @@ export default function AuthPage() {
                         type="email"
                         value={form.email}
                         onChange={set("email")}
-                        placeholder="you@example.com"
+                        placeholder="you@gmail.com"
                         autoComplete="email"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Số điện thoại
+                      </label>
                       <input
                         type="tel"
                         value={form.phone}
                         onChange={set("phone")}
-                        placeholder="09xx xxx xxx"
+                        placeholder="0xxxxxxxxx"
+                        maxLength={10}
                         autoComplete="tel"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20"
+                        className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${
+                          phoneError ? "border-red-400 bg-red-50" : "border-gray-200"
+                        }`}
                       />
+                      {/* Hiện lỗi realtime */}
+                      {phoneError && (
+                        <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+                      )}
+                      {/* Hiện số đã nhập */}
+                      {form.phone && !phoneError && (
+                        <p className="text-xs text-green-600 mt-1">✓ {form.phone.length}/10 số</p>
+                      )}
                     </div>
                   </div>
 
@@ -311,11 +333,8 @@ export default function AuthPage() {
                         autoComplete="new-password"
                         className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
+                      <button type="button" onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
@@ -331,13 +350,12 @@ export default function AuthPage() {
                         onChange={set("confirmPassword")}
                         placeholder="••••••••"
                         autoComplete="new-password"
-                        className={`w-full px-4 py-3 pr-12 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${form.confirmPassword && form.confirmPassword !== form.password ? "border-red-400 bg-red-50" : "border-gray-200"}`}
+                        className={`w-full px-4 py-3 pr-12 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${
+                          form.confirmPassword && form.confirmPassword !== form.password ? "border-red-400 bg-red-50" : "border-gray-200"
+                        }`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirm(!showConfirm)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
+                      <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                         {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
@@ -351,11 +369,8 @@ export default function AuthPage() {
                   <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-[#7C2D12] hover:bg-[#6B2510] text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-                >
+                <button type="submit" disabled={loading}
+                  className="w-full py-3.5 bg-[#7C2D12] hover:bg-[#6B2510] text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-70">
                   {loading && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                   {loading ? "Creating account..." : "Create Account"}
                 </button>

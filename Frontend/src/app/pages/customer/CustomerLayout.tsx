@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, Link, useLocation } from "react-router";
-import { useState } from "react";
-import { Search, ShoppingCart, Phone, X, LogOut, User, Menu } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, ShoppingCart, Phone, X, LogOut, User, Menu, Check } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 
@@ -10,9 +10,9 @@ const FacebookIcon = () => (
   </svg>
 );
 
-const ZaloIcon = () => (
-  <svg viewBox="0 0 32 32" className="w-4 h-4" fill="currentColor">
-    <path d="M16 3C8.82 3 3 8.82 3 16c0 2.82.88 5.44 2.38 7.6L3 29l5.6-2.32A12.9 12.9 0 0016 29c7.18 0 13-5.82 13-13S23.18 3 16 3zm0 23.5a10.4 10.4 0 01-5.3-1.44l-.38-.23-3.94 1.38 1.24-3.82-.25-.4A10.42 10.42 0 015.5 16C5.5 9.6 10.1 5 16 5s10.5 4.6 10.5 11-4.6 10.5-10.5 10.5z"/>
+const InstagramIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
   </svg>
 );
 
@@ -22,21 +22,36 @@ const TiktokIcon = () => (
   </svg>
 );
 
-const ShopeeIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
-    <path d="M12 2a5 5 0 00-5 5H5a2 2 0 00-2 2l1 11a2 2 0 002 2h12a2 2 0 002-2l1-11a2 2 0 00-2-2h-2a5 5 0 00-5-5zm0 2a3 3 0 013 3H9a3 3 0 013-3zm-5 7a1 1 0 110 2 1 1 0 010-2zm10 0a1 1 0 110 2 1 1 0 010-2z"/>
-  </svg>
-);
+const SOCIAL_LINKS = {
+  facebook:  "https://www.facebook.com/share/1FrY7AXvcV/?mibextid=wwXIfr",
+  instagram: "https://www.instagram.com/ale_farm.vn",
+  tiktok:    "https://www.tiktok.com/@ale_farms_dayy",
+};
 
 export default function CustomerLayout() {
   const { user, logout } = useAuth();
-  const { itemCount } = useCart();
+  const { itemCount, items } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [trackingCode, setTrackingCode] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen]     = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState<{ name: string; image: string } | null>(null);
+  const prevCountRef = useRef(itemCount);
+
+  useEffect(() => {
+    if (itemCount > prevCountRef.current) {
+      const lastItem = items[items.length - 1];
+      if (lastItem) {
+        setToast({ name: lastItem.product.name, image: lastItem.product.image });
+        setTimeout(() => setToast(null), 3000);
+      }
+    }
+    prevCountRef.current = itemCount;
+  }, [itemCount, items]);
 
   const handleLogout = () => {
     logout();
@@ -70,12 +85,10 @@ export default function CustomerLayout() {
 
       <header className="sticky top-0 z-50 shadow-md">
 
-        {/* HÀNG 1: trắng — Logo trái | Social icons phải */}
+        {/* HÀNG 1 */}
         <div className="bg-white border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex items-center justify-between h-14">
-
-              {/* Logo */}
               <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
                 <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
                   <img src="/images/logo.jpg" alt="ALE Farm's" className="w-full h-full object-cover" />
@@ -86,15 +99,21 @@ export default function CustomerLayout() {
                 </div>
               </Link>
 
-              {/* Social icons */}
               <div className="hidden sm:flex items-center gap-1">
-                <a href="#" title="Facebook" className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><FacebookIcon /></a>
-                <a href="#" title="Zalo"     className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><ZaloIcon /></a>
-                <a href="#" title="TikTok"   className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"><TiktokIcon /></a>
-                <a href="#" title="Shopee"   className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors"><ShopeeIcon /></a>
+                <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" title="Facebook"
+                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                  <FacebookIcon />
+                </a>
+                <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer" title="Instagram"
+                  className="p-2 text-gray-400 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                  <InstagramIcon />
+                </a>
+                <a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer" title="TikTok"
+                  className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                  <TiktokIcon />
+                </a>
               </div>
 
-              {/* Mobile toggle */}
               <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="sm:hidden p-2 hover:bg-gray-100 rounded-xl">
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -102,19 +121,15 @@ export default function CustomerLayout() {
           </div>
         </div>
 
-        {/* HÀNG 2: cam — Nav + Search + Phone + Cart + Profile */}
+        {/* HÀNG 2: cam */}
         <div className="bg-[#d35f1a] hidden sm:block">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex items-center justify-between">
-
-              {/* Nav links */}
               <nav className="flex items-center">
                 {navLinks.map((link) => {
                   const active = isActive(link.to);
                   return (
-                    <Link
-                      key={link.label}
-                      to={link.to}
+                    <Link key={link.label} to={link.to}
                       className={`flex items-center gap-1.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${
                         active ? "text-white" : "text-white/70 hover:text-white"
                       }`}
@@ -126,18 +141,12 @@ export default function CustomerLayout() {
                 })}
               </nav>
 
-              {/* Right side */}
               <div className="flex items-center gap-1">
-
-                {/* Search */}
                 {searchOpen ? (
                   <form onSubmit={handleTrack} className="flex items-center gap-1">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/60" />
-                      <input
-                        autoFocus
-                        type="text"
-                        value={trackingCode}
+                      <input autoFocus type="text" value={trackingCode}
                         onChange={(e) => setTrackingCode(e.target.value)}
                         placeholder="Nhập mã đơn hàng..."
                         className="w-40 pl-8 pr-3 py-1.5 rounded-lg border border-white/40 bg-white/20 text-white placeholder-white/60 text-xs outline-none focus:bg-white/30"
@@ -154,13 +163,11 @@ export default function CustomerLayout() {
                   </button>
                 )}
 
-                {/* Phone */}
                 <a href="tel:1900xxxx" className="hidden md:flex items-center gap-1.5 text-[11px] font-semibold text-white/90 hover:text-white transition-colors px-2">
                   <Phone className="w-3.5 h-3.5" />
                   1900-ALE-FARMS
                 </a>
 
-                {/* Cart */}
                 <Link to="/cart" className="relative p-2 text-white/80 hover:text-white hover:bg-white/15 rounded-lg transition-colors">
                   <ShoppingCart className="w-4 h-4" />
                   {itemCount > 0 && (
@@ -170,14 +177,11 @@ export default function CustomerLayout() {
                   )}
                 </Link>
 
-                {/* Profile — đã đăng nhập / chưa đăng nhập */}
                 <div className="relative">
                   {user ? (
                     <>
-                      <button
-                        onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                        className="flex items-center gap-1 p-1.5 hover:bg-white/15 rounded-lg transition-colors"
-                      >
+                      <button onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                        className="flex items-center gap-1 p-1.5 hover:bg-white/15 rounded-lg transition-colors">
                         <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
                           <User className="w-3.5 h-3.5 text-white" />
                         </div>
@@ -191,20 +195,14 @@ export default function CustomerLayout() {
                             <div className="text-sm font-medium text-gray-900">{user?.name}</div>
                             <div className="text-xs text-gray-500">{user?.email}</div>
                           </div>
-                          <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                          >
+                          <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                             <LogOut className="w-4 h-4" /> Đăng xuất
                           </button>
                         </div>
                       )}
                     </>
                   ) : (
-                    <Link
-                      to="/login"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#d35f1a] rounded-lg text-xs font-bold hover:bg-white/90 transition-colors"
-                    >
+                    <Link to="/login" className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#d35f1a] rounded-lg text-xs font-bold hover:bg-white/90 transition-colors">
                       <User className="w-3.5 h-3.5" />
                       Đăng nhập
                     </Link>
@@ -215,26 +213,21 @@ export default function CustomerLayout() {
           </div>
         </div>
 
-        {/* Mobile Nav dropdown */}
+        {/* Mobile Nav */}
         {mobileMenuOpen && (
           <div className="sm:hidden bg-white border-t border-gray-100">
             {navLinks.map((link) => (
-              <Link
-                key={link.label}
-                to={link.to}
-                onClick={() => setMobileMenuOpen(false)}
+              <Link key={link.label} to={link.to} onClick={() => setMobileMenuOpen(false)}
                 className={`block px-6 py-3 text-sm font-medium border-b border-gray-50 ${
                   isActive(link.to) ? "text-[#7C2D12] bg-[#7C2D12]/5" : "text-gray-700"
-                }`}
-              >
+                }`}>
                 {link.label}
               </Link>
             ))}
             <div className="flex items-center gap-4 px-6 py-3 border-b border-gray-50">
-              <a href="#" className="text-blue-600"><FacebookIcon /></a>
-              <a href="#" className="text-blue-500"><ZaloIcon /></a>
-              <a href="#" className="text-gray-900"><TiktokIcon /></a>
-              <a href="#" className="text-orange-500"><ShopeeIcon /></a>
+              <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-600"><FacebookIcon /></a>
+              <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-600"><InstagramIcon /></a>
+              <a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer" className="text-gray-900"><TiktokIcon /></a>
             </div>
             <div className="flex items-center justify-between px-6 py-3">
               <a href="tel:1900xxxx" className="flex items-center gap-2 text-sm text-gray-600">
@@ -254,11 +247,7 @@ export default function CustomerLayout() {
                     <LogOut className="w-5 h-5" />
                   </button>
                 ) : (
-                  <Link
-                    to="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="px-3 py-1.5 bg-[#d35f1a] text-white rounded-lg text-xs font-bold"
-                  >
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="px-3 py-1.5 bg-[#d35f1a] text-white rounded-lg text-xs font-bold">
                     Đăng nhập
                   </Link>
                 )}
@@ -276,16 +265,19 @@ export default function CustomerLayout() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-              <img src="/images/logo.png" alt="ALE Farm's" className="w-8 h-8 rounded-lg object-cover" />                <span className="font-bold text-[#D4A853]">ALE Farm's</span>
+                <img src="/images/logo.jpg" alt="ALE Farm's" className="w-8 h-8 rounded-lg object-cover" />
+                <span className="font-bold text-[#D4A853]">ALE Farm's</span>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
                 Đặc sản thịt hun khói từ núi rừng Tây Bắc. Chế biến theo phương pháp truyền thống, chất lượng không khoan nhượng.
               </p>
               <div className="flex items-center gap-3 mt-4">
-                <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors"><FacebookIcon /></a>
-                <a href="#" className="text-gray-400 hover:text-blue-300 transition-colors"><ZaloIcon /></a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors"><TiktokIcon /></a>
-                <a href="#" className="text-gray-400 hover:text-orange-400 transition-colors"><ShopeeIcon /></a>
+                <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-blue-400 transition-colors"><FacebookIcon /></a>
+                <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-pink-400 transition-colors"><InstagramIcon /></a>
+                <a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"><TiktokIcon /></a>
               </div>
             </div>
             <div>
@@ -310,7 +302,9 @@ export default function CustomerLayout() {
               <h4 className="font-semibold text-white mb-3">Liên hệ</h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li className="flex items-center gap-2"><Phone className="w-3 h-3" /> 1900-ALE-FARMS</li>
-                <li>Zalo: 0901234567</li>
+                <li><a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-[#D4A853]">Facebook: ALE Farm's</a></li>
+                <li><a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-[#D4A853]">Instagram: @ale_farm.vn</a></li>
+                <li><a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer" className="hover:text-[#D4A853]">TikTok: @ale_farms_dayy</a></li>
               </ul>
             </div>
           </div>
@@ -319,6 +313,32 @@ export default function CustomerLayout() {
           </div>
         </div>
       </footer>
+
+      {/* Toast thêm giỏ hàng */}
+      {toast && (
+        <div className="fixed bottom-24 right-6 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3 max-w-xs">
+            <img
+              src={toast.image}
+              alt={toast.name}
+              className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-2.5 h-2.5 text-white" />
+                </div>
+                <span className="text-xs font-semibold text-green-600">Đã thêm vào giỏ</span>
+              </div>
+              <p className="text-sm font-medium text-gray-900 truncate">{toast.name}</p>
+            </div>
+            <button onClick={() => setToast(null)} className="p-1 hover:bg-gray-100 rounded-lg flex-shrink-0">
+              <X className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -148,7 +148,7 @@ export default function HomePage() {
       {/* 1. HERO */}
       <section className="relative overflow-hidden min-h-[520px] flex items-center justify-center">
         <img
-          src="https://images.unsplash.com/photo-1750512705099-9273d6d50df8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1600"
+          src="/images/main_image.jpg"
           alt="Thịt hun khói ALE Farm's"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -238,7 +238,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
-              <img src="https://images.unsplash.com/photo-1757967708227-c67e37e7c96a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/images/main_1.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="self-end w-11 h-11 bg-[#D4A853] rounded-full flex flex-col items-center justify-center text-white font-black leading-tight shadow-lg text-center">
@@ -257,7 +257,7 @@ export default function HomePage() {
             </div>
 
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
-              <img src="https://images.unsplash.com/photo-1674066620885-6220ec2857f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/images/main_2.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
                 <span className="inline-block mb-2 px-2.5 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">Combo đặc biệt</span>
@@ -270,7 +270,7 @@ export default function HomePage() {
             </div>
 
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
-              <img src="https://images.unsplash.com/photo-1586816001966-79b736744398?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/images/main_3.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
                 <span className="inline-block mb-2 px-2.5 py-0.5 bg-[#2D6A4F] text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">Miễn phí vận chuyển</span>
