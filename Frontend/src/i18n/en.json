@@ -1,0 +1,127 @@
+{
+  "nav": {
+    "home": "Home",
+    "products": "Products",
+    "about": "About Us",
+    "contact": "Contact"
+  },
+  "header": {
+    "login": "Login",
+    "logout": "Logout",
+    "tracking": "Enter order code...",
+    "find": "Search"
+  },
+  "hero": {
+    "tag": "Northwest Specialty",
+    "title1": "Authentic smoked meat,",
+    "title2": "you'll love it",
+    "desc": "Handcrafted, slowly smoked with natural wood. No preservatives, no shortcuts.",
+    "buyNow": "Buy Now",
+    "viewFeatured": "View Featured"
+  },
+  "stats": {
+    "smoke": "Slow Smoked",
+    "smokeVal": "12 hours",
+    "smokeSub": "Preserving natural flavor",
+    "origin": "Origin",
+    "originVal": "Northwest",
+    "originSub": "Fresh meat from highlands",
+    "cert": "Certified",
+    "certVal": "VSATTP",
+    "certSub": "Food safety guaranteed",
+    "delivery": "Delivery",
+    "deliveryVal": "2 – 4 days",
+    "deliverySub": "Free ship over 500K"
+  },
+  "about": {
+    "founded": "Est. 2010",
+    "title": "From Northwest Mountains to Your Table",
+    "desc": "Free-range farm in the highlands, handcrafted — every product tells an authentic mountain story.",
+    "learnMore": "Learn More"
+  },
+  "featured": {
+    "tag": "Our Specialties",
+    "title": "FEATURED PRODUCTS",
+    "viewAll": "View all",
+    "viewAllBtn": "View All Products"
+  },
+  "product": {
+    "outOfStock": "Out of Stock",
+    "combo": "Combo",
+    "bestSeller": "Best Seller",
+    "premium": "Premium",
+    "addToCart": "Add",
+    "addedToCart": "Added to cart",
+    "viewCombo": "View {{count}} items in combo",
+    "noReview": "No reviews",
+    "reviews": "reviews",
+    "comboTotal": "Combo: {{price}}"
+  },
+  "products": {
+    "loading": "Loading products...",
+    "loadError": "Could not load products",
+    "retry": "Try again",
+    "filters": "Filters",
+    "clearFilters": "Clear filters",
+    "clearAllFilters": "Clear all filters",
+    "category": "Category",
+    "weight": "Weight",
+    "heroTag": "Explore & Shop",
+    "title": "All products",
+    "subtitle": "{{count}} Northwest specialty products",
+    "itemsSuffix": "products",
+    "sortFeatured": "Featured",
+    "sortRating": "Highest rated",
+    "sortPriceAsc": "Price: Low → High",
+    "sortPriceDesc": "Price: High → Low",
+    "emptyTitle": "No matching products",
+    "emptyDesc": "Try changing filters or category",
+    "viewProducts": "View {{count}} products",
+    "categories": {
+      "all": "All",
+      "buffalo": "Dried buffalo meat",
+      "pork": "Smoked meat",
+      "sausage": "Spices",
+      "poultry": "Poultry"
+    }
+  },
+  "cart": {
+    "empty": "Your cart is empty",
+    "emptyDesc": "You haven't added anything yet.",
+    "continueShopping": "Continue Shopping",
+    "title": "Shopping Cart",
+    "items": "items in cart",
+    "promo": "Promo Code",
+    "apply": "Apply",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "freeShip": "FREE",
+    "total": "Total",
+    "checkout": "Checkout",
+    "addMore": "Add more for free shipping"
+  },
+  "footer": {
+    "desc": "Northwest smoked meat specialty. Crafted with traditional methods, uncompromising quality.",
+    "products": "Products",
+    "support": "Support",
+    "contact": "Contact",
+    "track": "Track Order",
+    "shipping": "Shipping Policy",
+    "return": "Returns",
+    "faq": "FAQ",
+    "copyright": "© 2026 ALE Farm's. VSATTP Food Safety Certified. All rights reserved."
+  },
+  "auth": {
+    "login": "Log In",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name",
+    "phone": "Phone Number",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  }
+}

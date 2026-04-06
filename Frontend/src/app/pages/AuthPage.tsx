@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Check, Mountain, Leaf, Shield } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,14 +8,14 @@ type Mode = "login" | "register";
 
 function PasswordStrength({ password }: { password: string }) {
   const checks = [
-    { label: "8+ characters",    pass: password.length >= 8 },
-    { label: "Uppercase letter", pass: /[A-Z]/.test(password) },
-    { label: "Number",           pass: /[0-9]/.test(password) },
-    { label: "Special character",pass: /[^A-Za-z0-9]/.test(password) },
+    { label: "8+ ký tự",       pass: password.length >= 8 },
+    { label: "Chữ hoa",        pass: /[A-Z]/.test(password) },
+    { label: "Số",             pass: /[0-9]/.test(password) },
+    { label: "Ký tự đặc biệt", pass: /[^A-Za-z0-9]/.test(password) },
   ];
   const strength = checks.filter((c) => c.pass).length;
   const colors = ["bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-green-500"];
-  const labels = ["Weak", "Fair", "Good", "Strong"];
+  const labels = ["Yếu", "Trung bình", "Khá", "Mạnh"];
 
   if (!password) return null;
 
@@ -22,18 +23,14 @@ function PasswordStrength({ password }: { password: string }) {
     <div className="mt-2 space-y-2">
       <div className="flex gap-1">
         {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < strength ? colors[strength - 1] : "bg-gray-200"}`}
-          />
+          <div key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < strength ? colors[strength - 1] : "bg-gray-200"}`} />
         ))}
       </div>
       <div className="flex justify-between items-center">
         <div className="flex gap-3">
           {checks.map((c) => (
             <span key={c.label} className={`text-xs flex items-center gap-1 ${c.pass ? "text-green-600" : "text-gray-400"}`}>
-              <Check className="w-3 h-3" />
-              {c.label}
+              <Check className="w-3 h-3" /> {c.label}
             </span>
           ))}
         </div>
@@ -48,6 +45,7 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function AuthPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const [mode, setMode]                 = useState<Mode>("login");
@@ -60,21 +58,40 @@ export default function AuthPage() {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", confirmPassword: "",
   });
+  const [successMsg, setSuccessMsg] = useState("");
+
+  // Field-level touched state for green/red border feedback
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Chỉ cho nhập số với field phone
     if (field === "phone") {
       const onlyNumbers = e.target.value.replace(/[^0-9]/g, "");
       setForm((f) => ({ ...f, phone: onlyNumbers }));
     } else {
       setForm((f) => ({ ...f, [field]: e.target.value }));
     }
+    setTouched((t) => ({ ...t, [field]: true }));
     setError("");
+  };
+
+  // Per-field validation helpers
+  const isNameValid = (v: string) =>
+    v.trim().length >= 1 && v.trim().length <= 100 && /[a-zA-ZÀ-ỹ]/.test(v);
+  const isEmailValid = (v: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 100;
+  const isPhoneValid = (v: string) => /^0[0-9]{9}$/.test(v);
+  const isPasswordValid = (v: string) => v.length >= 8 && v.length <= 100;
+  const isConfirmValid = (v: string, p: string) => v === p && v.length > 0;
+
+  // Border state helper: default=gray, valid=green, invalid=red
+  const fieldBorder = (field: string, isValid: boolean) => {
+    if (!touched[field]) return "border-gray-200";
+    return isValid ? "border-green-500 ring-1 ring-green-200" : "border-red-400 ring-1 ring-red-100";
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.email || !form.password) { setError("Vui lòng điền đầy đủ thông tin."); return; }
+    if (!form.email || !form.password) { setError("Please fill in all fields"); return; }
     setLoading(true);
     const result = await login(form.email, form.password);
     setLoading(false);
@@ -84,40 +101,54 @@ export default function AuthPage() {
       if (user?.role === "admin") navigate("/admin");
       else navigate("/");
     } else {
-      setError(result.error || "Đăng nhập thất bại.");
+      setError("Invalid email or password.");
     }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
-      setError("Vui lòng điền đầy đủ các trường bắt buộc."); return;
+    // Mark all fields touched for border feedback
+    setTouched({ name: true, email: true, phone: true, password: true, confirmPassword: true });
+
+    if (!form.name || !form.email || !form.phone || !form.password || !form.confirmPassword) {
+      setError("Please fill in all required fields."); return;
     }
-
-    // Validate số điện thoại: bắt buộc 10 số, bắt đầu bằng 0
-    if (form.phone) {
-      if (!/^0[0-9]{9}$/.test(form.phone)) {
-        setError("Số điện thoại phải đủ 10 số và bắt đầu bằng số 0 (vd: 0912345678).");
-        return;
-      }
+    if (!isNameValid(form.name)) {
+      setError(form.name.trim().length < 1 || form.name.trim().length > 100
+        ? "Full name must be between 1 and 100 characters"
+        : "Full name contains invalid characters"); return;
     }
-
-    if (form.password !== form.confirmPassword) { setError("Mật khẩu xác nhận không khớp."); return; }
-    if (form.password.length < 8) { setError("Mật khẩu phải ít nhất 8 ký tự."); return; }
-
+    if (!isEmailValid(form.email)) {
+      setError(form.email.length > 100
+        ? "Email must not exceed 100 characters"
+        : "Please enter a valid email address"); return;
+    }
+    if (!isPhoneValid(form.phone)) {
+      setError("Please enter a valid phone number"); return;
+    }
+    if (!isPasswordValid(form.password)) {
+      setError("Password must be between 8-100 characters"); return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match"); return;
+    }
     setLoading(true);
     const result = await register(form.name, form.email, form.password, form.phone);
     setLoading(false);
-    if (result.success) navigate("/");
-    else setError(result.error || "Đăng ký thất bại.");
+    if (result.success) {
+      // US1: Do NOT auto-login — show success message and redirect to login
+      setSuccessMsg("Your account has been successfully created. Please log in.");
+      setForm({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
+      setTouched({});
+      setTimeout(() => { setMode("login"); setSuccessMsg(""); }, 3000);
+    } else {
+      // Map API errors to specific messages
+      const msg = result.error || "";
+      if (msg.toLowerCase().includes("email")) setError("This email is already registered");
+      else if (msg.toLowerCase().includes("phone")) setError("This phone number is already registered");
+      else setError(msg || "Registration failed.");
+    }
   };
-
-  // Kiểm tra phone realtime
-  const phoneError = form.phone && !/^0[0-9]{9}$/.test(form.phone)
-    ? form.phone.length < 10
-      ? `Còn thiếu ${10 - form.phone.length} số`
-      : "Số điện thoại phải bắt đầu bằng 0"
-    : null;
 
   return (
     <div className="min-h-screen flex">
@@ -145,7 +176,7 @@ export default function AuthPage() {
               <span className="text-[#D4A853]">To Your Table</span>
             </h1>
             <p className="text-white/80 text-lg leading-relaxed max-w-sm">
-              Handcrafted smoked meats using traditional methods, sourced from our Northwest mountain farm. Every bite tells a story.
+              Handcrafted smoked meats using traditional methods, sourced from our Northwest mountain farm.
             </p>
             <div className="flex flex-col gap-4 pt-4">
               {[
@@ -183,17 +214,13 @@ export default function AuthPage() {
           <div className="bg-white rounded-2xl shadow-xl p-8">
             {/* Tabs */}
             <div className="flex rounded-xl bg-[#FAF7F2] p-1 mb-8">
-              <button
-                onClick={() => { setMode("login"); setError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "login" ? "bg-white shadow text-[#7C2D12]" : "text-gray-500 hover:text-gray-700"}`}
-              >
-                Log In
+              <button onClick={() => { setMode("login"); setError(""); }}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "login" ? "bg-white shadow text-[#7C2D12]" : "text-gray-500 hover:text-gray-700"}`}>
+                {t("auth.login")}
               </button>
-              <button
-                onClick={() => { setMode("register"); setError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "register" ? "bg-white shadow text-[#7C2D12]" : "text-gray-500 hover:text-gray-700"}`}
-              >
-                Sign Up
+              <button onClick={() => { setMode("register"); setError(""); }}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "register" ? "bg-white shadow text-[#7C2D12]" : "text-gray-500 hover:text-gray-700"}`}>
+                {t("auth.signup")}
               </button>
             </div>
 
@@ -203,29 +230,19 @@ export default function AuthPage() {
                   <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
                   <p className="text-gray-500 text-sm mt-1">Sign in to your ALE Farm's account</p>
                 </div>
-
                 <div className="space-y-4 pt-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={set("email")}
-                      placeholder="you@gmail.com"
-                      autoComplete="email"
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email / Phone</label>
+                    <input type="text" value={form.email} onChange={set("email")}
+                      placeholder="you@gmail.com or 0xxxxxxxxx" autoComplete="username"
                       className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${error && !form.email ? "border-red-400 bg-red-50" : "border-gray-200"}`}
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("auth.password")}</label>
                     <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={form.password}
-                        onChange={set("password")}
-                        placeholder="••••••••"
-                        autoComplete="current-password"
+                      <input type={showPassword ? "text" : "password"} value={form.password} onChange={set("password")}
+                        placeholder="••••••••" autoComplete="current-password"
                         className={`w-full px-4 py-3 pr-12 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${error && !form.password ? "border-red-400 bg-red-50" : "border-gray-200"}`}
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -235,32 +252,26 @@ export default function AuthPage() {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)}
                       className="w-4 h-4 rounded accent-[#7C2D12]" />
-                    <span className="text-sm text-gray-600">Remember me</span>
+                    <span className="text-sm text-gray-600">{t("auth.rememberMe")}</span>
                   </label>
                   <button type="button" className="text-sm text-[#7C2D12] hover:underline font-medium">
-                    Forgot password?
+                    {t("auth.forgotPassword")}
                   </button>
                 </div>
-
-                {error && (
-                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>
-                )}
-
+                {error && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>}
                 <button type="submit" disabled={loading}
                   className="w-full py-3.5 bg-[#7C2D12] hover:bg-[#6B2510] text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-70">
                   {loading && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                  {loading ? "Signing in..." : "Log In"}
+                  {loading ? "Đang đăng nhập..." : t("auth.login")}
                 </button>
-
                 <p className="text-center text-sm text-gray-500">
-                  Don't have an account?{" "}
+                  {t("auth.noAccount")}{" "}
                   <button type="button" onClick={() => setMode("register")} className="text-[#7C2D12] font-semibold hover:underline">
-                    Sign up
+                    {t("auth.signup")}
                   </button>
                 </p>
               </form>
@@ -270,68 +281,57 @@ export default function AuthPage() {
                   <h2 className="text-2xl font-bold text-gray-900">Create account</h2>
                   <p className="text-gray-500 text-sm mt-1">Join ALE Farm's community today</p>
                 </div>
-
+                {successMsg && (
+                  <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+                    ✓ {successMsg}
+                  </div>
+                )}
                 <div className="space-y-4 pt-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name *</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={set("name")}
-                      placeholder="Nguyen Van A"
-                      autoComplete="name"
-                      className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${error && !form.name ? "border-red-400 bg-red-50" : "border-gray-200"}`}
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("auth.fullName")} *</label>
+                    <input type="text" value={form.name} onChange={set("name")}
+                      placeholder="Nguyen Van A" autoComplete="name"
+                      className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white ${fieldBorder("name", isNameValid(form.name))}`}
                     />
+                    {touched.name && !isNameValid(form.name) && form.name && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {form.name.trim().length > 100 ? "Full name must be between 1 and 100 characters" : "Full name contains invalid characters"}
+                      </p>
+                    )}
                   </div>
-
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
-                      <input
-                        type="email"
-                        value={form.email}
-                        onChange={set("email")}
-                        placeholder="you@gmail.com"
-                        autoComplete="email"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20"
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("auth.email")} *</label>
+                      <input type="email" value={form.email} onChange={set("email")}
+                        placeholder="you@gmail.com" autoComplete="email"
+                        className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white ${fieldBorder("email", isEmailValid(form.email))}`}
                       />
+                      {touched.email && !isEmailValid(form.email) && form.email && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {form.email.length > 100 ? "Email must not exceed 100 characters" : "Please enter a valid email address"}
+                        </p>
+                      )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Số điện thoại
-                      </label>
-                      <input
-                        type="tel"
-                        value={form.phone}
-                        onChange={set("phone")}
-                        placeholder="0xxxxxxxxx"
-                        maxLength={10}
-                        autoComplete="tel"
-                        className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${
-                          phoneError ? "border-red-400 bg-red-50" : "border-gray-200"
-                        }`}
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("auth.phone")} *</label>
+                      <input type="tel" value={form.phone} onChange={set("phone")}
+                        placeholder="0xxxxxxxxx" maxLength={10} autoComplete="tel"
+                        className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white ${fieldBorder("phone", isPhoneValid(form.phone))}`}
                       />
-                      {/* Hiện lỗi realtime */}
-                      {phoneError && (
-                        <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+                      {touched.phone && !isPhoneValid(form.phone) && form.phone && (
+                        <p className="text-xs text-red-500 mt-1">Please enter a valid phone number</p>
                       )}
-                      {/* Hiện số đã nhập */}
-                      {form.phone && !phoneError && (
+                      {touched.phone && isPhoneValid(form.phone) && (
                         <p className="text-xs text-green-600 mt-1">✓ {form.phone.length}/10 số</p>
                       )}
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("auth.password")} *</label>
                     <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={form.password}
-                        onChange={set("password")}
-                        placeholder="••••••••"
-                        autoComplete="new-password"
-                        className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20"
+                      <input type={showPassword ? "text" : "password"} value={form.password} onChange={set("password")}
+                        placeholder="••••••••" autoComplete="new-password"
+                        className={`w-full px-4 py-3 pr-12 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white ${fieldBorder("password", isPasswordValid(form.password))}`}
                       />
                       <button type="button" onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -340,45 +340,33 @@ export default function AuthPage() {
                     </div>
                     <PasswordStrength password={form.password} />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("auth.confirmPassword")} *</label>
                     <div className="relative">
-                      <input
-                        type={showConfirm ? "text" : "password"}
-                        value={form.confirmPassword}
-                        onChange={set("confirmPassword")}
-                        placeholder="••••••••"
-                        autoComplete="new-password"
-                        className={`w-full px-4 py-3 pr-12 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${
-                          form.confirmPassword && form.confirmPassword !== form.password ? "border-red-400 bg-red-50" : "border-gray-200"
-                        }`}
+                      <input type={showConfirm ? "text" : "password"} value={form.confirmPassword} onChange={set("confirmPassword")}
+                        placeholder="••••••••" autoComplete="new-password"
+                        className={`w-full px-4 py-3 pr-12 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white ${fieldBorder("confirmPassword", isConfirmValid(form.confirmPassword, form.password))}`}
                       />
                       <button type="button" onClick={() => setShowConfirm(!showConfirm)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                         {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
-                    {form.confirmPassword && form.confirmPassword !== form.password && (
+                    {touched.confirmPassword && form.confirmPassword && !isConfirmValid(form.confirmPassword, form.password) && (
                       <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
                     )}
                   </div>
                 </div>
-
-                {error && (
-                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>
-                )}
-
+                {error && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>}
                 <button type="submit" disabled={loading}
                   className="w-full py-3.5 bg-[#7C2D12] hover:bg-[#6B2510] text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-70">
                   {loading && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                  {loading ? "Creating account..." : "Create Account"}
+                  {loading ? "Creating account..." : t("auth.signup")}
                 </button>
-
                 <p className="text-center text-sm text-gray-500">
-                  Already have an account?{" "}
+                  {t("auth.hasAccount")}{" "}
                   <button type="button" onClick={() => setMode("login")} className="text-[#7C2D12] font-semibold hover:underline">
-                    Log in
+                    {t("auth.login")}
                   </button>
                 </p>
               </form>

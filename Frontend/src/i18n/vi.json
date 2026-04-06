@@ -1,0 +1,127 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "products": "Sản phẩm",
+    "about": "Về chúng tôi",
+    "contact": "Liên hệ"
+  },
+  "header": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "tracking": "Nhập mã đơn hàng...",
+    "find": "Tìm"
+  },
+  "hero": {
+    "tag": "Đặc sản Tây Bắc",
+    "title1": "Thịt hun khói đích thực,",
+    "title2": "bạn sẽ mê ngay",
+    "desc": "Chế biến thủ công, hun khói chậm bằng củi tự nhiên. Không chất bảo quản, không cắt xén.",
+    "buyNow": "Mua ngay",
+    "viewFeatured": "Xem nổi bật"
+  },
+  "stats": {
+    "smoke": "Hun khói chậm",
+    "smokeVal": "12 giờ",
+    "smokeSub": "Giữ trọn hương vị tự nhiên",
+    "origin": "Nguồn gốc",
+    "originVal": "Tây Bắc",
+    "originSub": "Thịt tươi từ vùng núi cao",
+    "cert": "Chứng nhận",
+    "certVal": "VSATTP",
+    "certSub": "An toàn thực phẩm đảm bảo",
+    "delivery": "Giao hàng",
+    "deliveryVal": "2 – 4 ngày",
+    "deliverySub": "Miễn phí đơn từ 500K"
+  },
+  "about": {
+    "founded": "Thành lập 2010",
+    "title": "Từ núi rừng Tây Bắc đến bàn ăn của bạn",
+    "desc": "Trang trại thả vườn trên vùng cao, chế biến thủ công — mỗi sản phẩm là câu chuyện chân thực của núi rừng.",
+    "learnMore": "Tìm hiểu thêm"
+  },
+  "featured": {
+    "tag": "Đặc sản của chúng tôi",
+    "title": "SẢN PHẨM NỔI BẬT",
+    "viewAll": "Xem tất cả",
+    "viewAllBtn": "Xem tất cả sản phẩm"
+  },
+  "product": {
+    "outOfStock": "Hết hàng",
+    "combo": "Combo",
+    "bestSeller": "Bán chạy",
+    "premium": "Cao cấp",
+    "addToCart": "Thêm",
+    "addedToCart": "Đã thêm vào giỏ",
+    "viewCombo": "Xem {{count}} món trong combo",
+    "noReview": "Chưa có",
+    "reviews": "đánh giá",
+    "comboTotal": "Combo: {{price}}"
+  },
+  "products": {
+    "loading": "Đang tải sản phẩm...",
+    "loadError": "Không thể tải sản phẩm",
+    "retry": "Thử lại",
+    "filters": "Bộ lọc",
+    "clearFilters": "Xoá lọc",
+    "clearAllFilters": "Xoá bộ lọc",
+    "category": "Danh mục",
+    "weight": "Khối lượng",
+    "heroTag": "Khám phá & Mua sắm",
+    "title": "Tất cả sản phẩm",
+    "subtitle": "{{count}} sản phẩm đặc sản Tây Bắc",
+    "itemsSuffix": "sản phẩm",
+    "sortFeatured": "Nổi bật",
+    "sortRating": "Đánh giá cao",
+    "sortPriceAsc": "Giá: Thấp → Cao",
+    "sortPriceDesc": "Giá: Cao → Thấp",
+    "emptyTitle": "Không có sản phẩm phù hợp",
+    "emptyDesc": "Thử thay đổi bộ lọc hoặc danh mục khác",
+    "viewProducts": "Xem {{count}} sản phẩm",
+    "categories": {
+      "all": "Tất cả",
+      "buffalo": "Thịt gác bếp",
+      "pork": "Thịt hun khói",
+      "sausage": "Gia vị",
+      "poultry": "Gia cầm"
+    }
+  },
+  "cart": {
+    "empty": "Giỏ hàng trống",
+    "emptyDesc": "Bạn chưa thêm sản phẩm nào.",
+    "continueShopping": "Tiếp tục mua sắm",
+    "title": "Giỏ hàng",
+    "items": "sản phẩm trong giỏ",
+    "promo": "Mã giảm giá",
+    "apply": "Áp dụng",
+    "subtotal": "Tạm tính",
+    "shipping": "Vận chuyển",
+    "freeShip": "MIỄN PHÍ",
+    "total": "Tổng cộng",
+    "checkout": "Thanh toán",
+    "addMore": "Mua thêm để được freeship"
+  },
+  "footer": {
+    "desc": "Đặc sản thịt hun khói từ núi rừng Tây Bắc. Chế biến theo phương pháp truyền thống, chất lượng không khoan nhượng.",
+    "products": "Sản phẩm",
+    "support": "Hỗ trợ",
+    "contact": "Liên hệ",
+    "track": "Theo dõi đơn hàng",
+    "shipping": "Chính sách vận chuyển",
+    "return": "Đổi trả hàng",
+    "faq": "Câu hỏi thường gặp",
+    "copyright": "© 2026 ALE Farm's. Đạt chứng nhận An toàn Thực phẩm VSATTP. Bảo lưu mọi quyền."
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "signup": "Đăng ký",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "fullName": "Họ và tên",
+    "phone": "Số điện thoại",
+    "rememberMe": "Ghi nhớ đăng nhập",
+    "forgotPassword": "Quên mật khẩu?",
+    "noAccount": "Chưa có tài khoản?",
+    "hasAccount": "Đã có tài khoản?"
+  }
+}

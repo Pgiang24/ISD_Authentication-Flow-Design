@@ -1,93 +1,116 @@
-import { Router } from "express";
-import { pool } from "../db.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+// src/routes/users.js — khớp schema v3 (cột "password" không phải "password_hash")
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import pool from '../db.js';
+const router = express.Router();
 
-const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'ale_farm_secret_change_in_prod';
 
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    console.log("=== LOGIN DEBUG ===");
-    console.log("Email:", email);
-    console.log("Password nhận:", password);
-    console.log("Password length:", password?.length);
-
-    const [rows] = await pool.query(
-      "SELECT * FROM Users WHERE email = ?",
-      [email]
-    );
-    const user = rows[0];
-    if (!user) return res.status(401).json({ error: "Email không tồn tại" });
-
-    console.log("DB password prefix:", user.password?.substring(0, 10));
-
-    const isHashed = user.password.startsWith("$2");
-    console.log("isHashed:", isHashed);
-
-    let match;
-    if (isHashed) {
-      match = await bcrypt.compare(password, user.password);
-    } else {
-      match = password === user.password;
-    }
-
-    console.log("match:", match);
-
-    if (!match) return res.status(401).json({ error: "Sai mật khẩu" });
-
-    const token = jwt.sign(
-      { id: user.user_id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    res.json({
-      token,
-      user: {
-        id:    String(user.user_id),
-        name:  user.full_name,
-        email: user.email,
-        role:  user.role,
-        phone: user.phone,
-      },
-    });
-  } catch (err) {
-    console.error("Login error:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post("/register", async (req, res) => {
+// POST /api/users/register — US Sprint1
+router.post('/register', async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
 
-    console.log("=== REGISTER DEBUG ===");
-    console.log("Name:", name, "Email:", email);
+    if (!name?.trim() || !email?.trim() || !password || !phone?.trim())
+      return res.status(400).json({ error: 'Please fill in all required fields.' });
 
-    const [existing] = await pool.query(
-      "SELECT user_id FROM Users WHERE email = ?",
-      [email]
+    if (!/^[a-zA-ZÀ-ỹ\s]{1,100}$/.test(name.trim()))
+      return res.status(400).json({ error: 'Full name contains invalid characters' });
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 100)
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+
+    if (!/^0[0-9]{9}$/.test(phone))
+      return res.status(400).json({ error: 'Please enter a valid phone number' });
+
+    if (password.length < 8 || password.length > 100)
+      return res.status(400).json({ error: 'Password must be between 8-100 characters' });
+
+    const { rows: existing } = await pool.query(
+      'SELECT email, phone FROM users WHERE email=$1 OR phone=$2',
+      [email.toLowerCase(), phone]
     );
-    if (existing[0]) {
-      return res.status(400).json({ error: "Email đã được sử dụng" });
+    if (existing.some(r => r.email === email.toLowerCase()))
+      return res.status(409).json({ error: 'This email is already registered' });
+    if (existing.some(r => r.phone === phone))
+      return res.status(409).json({ error: 'This phone number is already registered' });
+
+    const hash = await bcrypt.hash(password, 12);
+
+    // Schema v3: cột là "password" (không phải password_hash)
+    await pool.query(
+      `INSERT INTO users (full_name, email, phone, password, role)
+       VALUES ($1,$2,$3,$4,'customer')`,
+      [name.trim(), email.toLowerCase(), phone, hash]
+    );
+
+    res.status(201).json({
+      message: 'Your account has been successfully created. Please log in.'
+    });
+  } catch (e) {
+    console.error('Register error:', e.message);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// POST /api/users/login — US Sprint1 (email HOẶC phone) + admin redirect
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email?.trim() || !password)
+      return res.status(400).json({ error: 'Please fill in all fields' });
+
+    // Tìm theo email HOẶC phone
+    const { rows } = await pool.query(
+      `SELECT * FROM users
+       WHERE (email=$1 OR phone=$1) AND is_active=TRUE`,
+      [email.trim().toLowerCase()]
+    );
+
+    if (!rows.length)
+      return res.status(401).json({ error: 'Invalid email or password.' });
+
+    const user = rows[0];
+
+    // Schema v3: cột là "password"
+    const match = await bcrypt.compare(password, user.password);
+    if (!match)
+      return res.status(401).json({ error: 'Invalid email or password.' });
+
+    const token = jwt.sign(
+      { userId: user.user_id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Lưu session cho admin
+    if (user.role === 'admin') {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await pool.query(
+        `INSERT INTO admin_sessions (user_id, token_hash, expires_at)
+         VALUES ($1,$2,$3)
+         ON CONFLICT (token_hash) DO NOTHING`,
+        [user.user_id, token, expiresAt]
+      ).catch(() => {}); // admin_sessions có thể chưa tồn tại → bỏ qua
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-    console.log("Hashed prefix:", hashed.substring(0, 10));
-
-    const [result] = await pool.query(
-      `INSERT INTO Users (full_name, email, phone, password, role)
-       VALUES (?, ?, ?, ?, 'customer')`,
-      [name, email, phone || null, hashed]
-    );
-
-    console.log("Registered userId:", result.insertId);
-    res.status(201).json({ success: true, userId: result.insertId });
-  } catch (err) {
-    console.error("Register error:", err.message);
-    res.status(500).json({ error: err.message });
+    // Không trả cột password
+    const { password: _, ...safeUser } = user;
+    res.json({
+      token,
+      user: {
+        id:    safeUser.user_id,
+        name:  safeUser.full_name,
+        email: safeUser.email,
+        phone: safeUser.phone,
+        role:  safeUser.role,
+      }
+    });
+  } catch (e) {
+    console.error('Login error:', e.message);
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 

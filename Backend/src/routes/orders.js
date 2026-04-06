@@ -1,96 +1,218 @@
-import { Router } from "express";
-import { pool } from "../db.js";
+// src/routes/orders.js — khớp schema v3
+// orders: recipient_name, recipient_phone, status ENUM chữ hoa ('Pending'...)
+// payments: bảng riêng (payment_method, payment_status, amount)
+import express from 'express';
+import pool from '../db.js';
+const router = express.Router();
 
-const router = Router();
-
-router.post("/", async (req, res) => {
-  const conn = await pool.getConnection();
+// GET /api/orders — US6/US7: danh sách đơn cho admin
+router.get('/', async (req, res) => {
   try {
-    await conn.beginTransaction();
+    const { status, search, sort = 'newest', page = 1, limit = 20 } = req.query;
+    const params = [];
+    const conditions = [];
+    let idx = 1;
 
-const { userId, customer, phone, email, address,
-        items, total, paymentMethod, channelId } = req.body;
-        
-    const [orderResult] = await conn.query(
-      `INSERT INTO Orders (user_id, order_date, status, total_amount, channel_id)
-       VALUES (?, NOW(), 'pending', ?, 1)`,
-      [userId || null, total]
-    );
-    const orderId = orderResult.insertId;
-
-    for (const item of items) {
-      await conn.query(
-        `INSERT INTO Order_Items (order_id, product_id, quantity, price)
-         VALUES (?, ?, ?, ?)`,
-        [orderId, item.productId, item.qty, item.price]
-      );
-
-      await conn.query(
-        `UPDATE Inventory
-         SET stock_quantity = stock_quantity - ?, last_update = NOW()
-         WHERE product_id = ?`,
-        [item.qty, item.productId]
-      );
+    // US7: filter theo status tab (chữ hoa theo ENUM)
+    if (status && status !== 'all') {
+      const statusMap = {
+        pending: 'Pending', confirmed: 'Confirmed', processing: 'Processing',
+        shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled',
+        Pending: 'Pending', Confirmed: 'Confirmed', Processing: 'Processing',
+        Shipped: 'Shipped', Delivered: 'Delivered', Cancelled: 'Cancelled',
+      };
+      const mapped = statusMap[status] || status;
+      conditions.push(`o.status = $${idx++}`);
+      params.push(mapped);
     }
 
-    await conn.query(
-      `INSERT INTO Payments (order_id, payment_method, payment_status, payment_date)
-       VALUES (?, ?, 'pending', NOW())`,
-      [orderId, paymentMethod]
+    // US7: search theo Order ID, customer name, phone
+    if (search?.trim()) {
+      const s = `%${search.trim()}%`;
+      conditions.push(
+        `(o.order_id::TEXT ILIKE $${idx} OR o.recipient_name ILIKE $${idx} OR o.recipient_phone ILIKE $${idx})`
+      );
+      params.push(s);
+      idx++;
+    }
+
+    const where    = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const orderBy  = sort === 'oldest' ? 'o.order_date ASC' : 'o.order_date DESC';
+    const offset   = (Number(page) - 1) * Number(limit);
+
+    const { rows } = await pool.query(`
+      SELECT
+        o.*,
+        py.payment_method,
+        py.payment_status,
+        py.amount          AS payment_amount,
+        ch.channel_name,
+        COUNT(oi.order_item_id)::INT AS item_count,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'name',   p.product_name,
+            'qty',    oi.quantity,
+            'price',  oi.unit_price,
+            'weight', pv.weight
+          )
+        ) FILTER (WHERE oi.order_item_id IS NOT NULL) AS items
+      FROM orders o
+      LEFT JOIN payments        py ON py.order_id   = o.order_id
+      LEFT JOIN channels        ch ON ch.channel_id = o.channel_id
+      LEFT JOIN order_items     oi ON oi.order_id   = o.order_id
+      LEFT JOIN product_variants pv ON pv.variant_id = oi.variant_id
+      LEFT JOIN products         p  ON p.product_id  = pv.product_id
+      ${where}
+      GROUP BY o.order_id, py.payment_method, py.payment_status, py.amount, ch.channel_name
+      ORDER BY ${orderBy}
+      LIMIT $${idx} OFFSET $${idx+1}
+    `, [...params, Number(limit), offset]);
+
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(DISTINCT o.order_id)::INT AS total FROM orders o ${where}`,
+      params
     );
 
-    await conn.commit();
-    res.status(201).json({
-      success: true,
-      orderId,
-      orderCode: `ALE-ORDER-${String(orderId).padStart(3, "0")}`,
-    });
-  } catch (err) {
-    await conn.rollback();
-    res.status(500).json({ error: err.message });
-  } finally {
-    conn.release();
-  }
-});
-
-router.get("/", async (req, res) => {
-  try {
-    const [orders] = await pool.query(`
-      SELECT o.*, u.full_name AS customer, u.phone, u.email,
-             p.payment_method, p.payment_status
-      FROM Orders o
-      LEFT JOIN Users u ON u.user_id = o.user_id
-      LEFT JOIN Payments p ON p.order_id = o.order_id
-      ORDER BY o.order_date DESC
+    // Status counts cho tabs (US7)
+    const { rows: statusCounts } = await pool.query(`
+      SELECT status, COUNT(*)::INT AS count FROM orders GROUP BY status
     `);
 
-    for (const order of orders) {
-      const [items] = await pool.query(
-        `SELECT oi.*, pr.product_name AS name
-         FROM Order_Items oi
-         JOIN Products pr ON pr.product_id = oi.product_id
-         WHERE oi.order_id = ?`,
-        [order.order_id]
-      );
-      order.items = items;
-    }
-
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({
+      orders: rows.map(o => ({
+        ...o,
+        // Map sang field names frontend đang dùng
+        id:            `ALE-ORDER-${String(o.order_id).padStart(3,'0')}`,
+        order_code:    `ALE-ORDER-${String(o.order_id).padStart(3,'0')}`,
+        customer:      o.recipient_name,
+        full_name:     o.recipient_name,
+        phone:         o.recipient_phone,
+        date:          o.order_date?.toISOString().split('T')[0],
+        total:         Number(o.total_amount),
+        status:        o.status,
+        paymentMethod: o.payment_method || 'COD',
+        paymentStatus: o.payment_status || 'Pending',
+        items:         o.items || [],
+      })),
+      total:        countRows[0].total,
+      statusCounts: Object.fromEntries(
+        statusCounts.map(s => [s.status.toLowerCase(), s.count])
+      ),
+    });
+  } catch (e) {
+    console.error('GET /api/orders error:', e.message);
+    res.status(500).json({ error: 'Unable to load order list. Please try again.' });
   }
 });
 
-router.patch("/:id/status", async (req, res) => {
+// POST /api/orders — tạo đơn hàng mới (checkout)
+router.post('/', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const {
+      userId, customer, phone, email, address,
+      city, district, ward, deliveryNotes,
+      items, paymentMethod, channelId
+    } = req.body;
+
+    const subtotal    = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const shippingFee = subtotal >= 500000 ? 0 : 30000;
+    const grandTotal  = subtotal + shippingFee;
+
+    // Tạo order — dùng recipient_name, recipient_phone theo schema v3
+    const { rows: orderRows } = await client.query(`
+      INSERT INTO orders
+        (user_id, channel_id, status, total_amount,
+         recipient_name, recipient_phone, address, city, district, ward, delivery_notes)
+      VALUES ($1,$2,'Pending',$3,$4,$5,$6,$7,$8,$9,$10)
+      RETURNING order_id
+    `, [
+      userId || null, channelId || 1, grandTotal,
+      customer, phone, address || '',
+      city || '', district || '', ward || null,
+      deliveryNotes || null
+    ]);
+
+    const { order_id } = orderRows[0];
+    const orderCode = `ALE-ORDER-${String(order_id).padStart(3,'0')}`;
+
+    // Insert order items + giảm stock
+    for (const item of items) {
+      const { rows: vRows } = await client.query(
+        `SELECT pv.variant_id, i.stock_quantity
+         FROM product_variants pv
+         JOIN inventory i ON i.variant_id = pv.variant_id
+         WHERE pv.product_id=$1 AND pv.weight=$2 AND pv.is_active=TRUE`,
+        [item.productId, item.weight]
+      );
+      if (!vRows.length)
+        throw new Error(`Không tìm thấy sản phẩm: ${item.name} ${item.weight}`);
+
+      const v = vRows[0];
+      if (v.stock_quantity < item.qty)
+        throw new Error(`Không đủ hàng: ${item.name} chỉ còn ${v.stock_quantity}`);
+
+      await client.query(
+        `INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
+         VALUES ($1,$2,$3,$4)`,
+        [order_id, v.variant_id, item.qty, item.price]
+      );
+
+      // Giảm stock trong bảng inventory
+      await client.query(
+        `UPDATE inventory SET stock_quantity = stock_quantity - $1, last_updated = NOW()
+         WHERE variant_id = $2`,
+        [item.qty, v.variant_id]
+      );
+    }
+
+    // Tạo bản ghi payment
+    const pmMethod = paymentMethod === 'bank' ? 'Bank Transfer' : 'COD';
+    await client.query(
+      `INSERT INTO payments (order_id, payment_method, payment_status, amount)
+       VALUES ($1,$2,'Pending',$3)`,
+      [order_id, pmMethod, grandTotal]
+    );
+
+    await client.query('COMMIT');
+    res.status(201).json({ orderCode });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/orders error:', e.message);
+    res.status(500).json({ error: e.message || 'Không thể tạo đơn hàng' });
+  } finally {
+    client.release();
+  }
+});
+
+// PATCH /api/orders/:id/status — US8: admin cập nhật status
+router.patch('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    await pool.query(
-      "UPDATE Orders SET status = ? WHERE order_id = ?",
-      [status, req.params.id]
+    // Chấp nhận lowercase lẫn Title Case
+    const statusMap = {
+      pending: 'Pending', confirmed: 'Confirmed', processing: 'Processing',
+      shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled',
+    };
+    const mapped = statusMap[status?.toLowerCase()] || status;
+    const valid = ['Pending','Confirmed','Processing','Shipped','Delivered','Cancelled'];
+    if (!valid.includes(mapped))
+      return res.status(400).json({ error: 'Invalid status' });
+
+    const { rows } = await pool.query(
+      `UPDATE orders SET status=$1::order_status, updated_at=NOW()
+       WHERE order_id=$2 RETURNING *`,
+      [mapped, req.params.id]
     );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (!rows.length)
+      return res.status(404).json({ error: 'Order not found' });
+
+    res.json({ message: 'Status updated', order: rows[0] });
+  } catch (e) {
+    console.error('PATCH order status error:', e.message);
+    res.status(500).json({ error: 'Could not update status' });
   }
 });
 

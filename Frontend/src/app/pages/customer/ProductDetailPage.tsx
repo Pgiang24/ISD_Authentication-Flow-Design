@@ -72,17 +72,23 @@ export default function ProductDetailPage() {
   };
 
   const handleBuyNow = () => {
+    // US6: Buy Now adds to cart then immediately redirects to checkout
     addToCart(product, variant.weight, quantity);
-    navigate("/cart");
+    navigate("/checkout");
   };
 
   const checkPromo = () => {
     const valid: Record<string, number> = { ALEFARMS10: 10, WELCOME20: 20, SUMMER15: 15 };
-    const upper = promoInput.toUpperCase();
+    const upper = promoInput.trim().toUpperCase();
+    if (!upper) {
+      setPromoMsg({ text: "Please enter a promo code.", ok: false });
+      return;
+    }
     if (valid[upper]) {
       setPromoMsg({ text: `Code applied! ${valid[upper]}% discount at checkout`, ok: true });
     } else {
-      setPromoMsg({ text: "Invalid promo code. Try ALEFARMS10", ok: false });
+      // US6: "Invalid or expired promo code."
+      setPromoMsg({ text: "Invalid or expired promo code.", ok: false });
     }
   };
 
@@ -212,7 +218,10 @@ export default function ProductDetailPage() {
               </button>
               <span className="w-10 text-center font-semibold text-gray-900">{quantity}</span>
               <button
-                onClick={() => setQuantity(Math.min(variant.stock, quantity + 1))}
+                onClick={() => {
+                  if (quantity >= variant.stock) return;
+                  setQuantity(quantity + 1);
+                }}
                 disabled={quantity >= variant.stock}
                 className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:border-[#7C2D12] hover:text-[#7C2D12] transition-colors disabled:opacity-40"
               >
@@ -222,6 +231,12 @@ export default function ProductDetailPage() {
                 {inStock ? `Còn ${variant.stock} sản phẩm` : "Hết hàng"}
               </span>
             </div>
+            {/* US6: error when quantity reaches max stock */}
+            {quantity >= variant.stock && inStock && (
+              <p className="text-xs text-red-500 mt-1.5">
+                Cannot add more than the available stock.
+              </p>
+            )}
           </div>
 
           {/* CTA Buttons */}

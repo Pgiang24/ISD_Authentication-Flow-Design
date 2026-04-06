@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, Link, useLocation } from "react-router";
 import { useState, useEffect, useRef } from "react";
 import { Search, ShoppingCart, Phone, X, LogOut, User, Menu, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 
@@ -29,16 +30,15 @@ const SOCIAL_LINKS = {
 };
 
 export default function CustomerLayout() {
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const { itemCount, items } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
-  const [trackingCode, setTrackingCode] = useState("");
-  const [searchOpen, setSearchOpen]     = useState(false);
+  const [trackingCode, setTrackingCode]     = useState("");
+  const [searchOpen, setSearchOpen]         = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-
-  // Toast state
   const [toast, setToast] = useState<{ name: string; image: string } | null>(null);
   const prevCountRef = useRef(itemCount);
 
@@ -52,26 +52,33 @@ export default function CustomerLayout() {
     }
     prevCountRef.current = itemCount;
   }, [itemCount, items]);
+  const handleLogout = () => { logout(); navigate("/"); setProfileMenuOpen(false); };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-    setProfileMenuOpen(false);
-  };
+  const [trackingError, setTrackingError] = useState("");
 
   const handleTrack = (e: React.FormEvent) => {
     e.preventDefault();
-    if (trackingCode.trim()) {
-      alert(`Theo dõi đơn hàng: ${trackingCode}\n\nTrạng thái: Đang vận chuyển → Dự kiến giao: 2-3 ngày`);
-      setSearchOpen(false);
+    if (!trackingCode.trim()) {
+      setTrackingError("Please enter your tracking code or phone number to proceed.");
+      return;
     }
+    // Only accept alphanumeric or numeric-only
+    if (!/^[a-zA-Z0-9]+$/.test(trackingCode.trim())) {
+      setTrackingError("Please enter a valid tracking code or phone number.");
+      return;
+    }
+    setTrackingError("");
+    alert(`Theo dõi đơn hàng: ${trackingCode}\n\nTrạng thái: Đang vận chuyển → Dự kiến giao: 2-3 ngày`);
+    setSearchOpen(false);
   };
 
+  const toggleLang = () => i18n.changeLanguage(i18n.language === "vi" ? "en" : "vi");
+
   const navLinks = [
-    { label: "Trang chủ",    to: "/" },
-    { label: "Sản phẩm",     to: "/products" },
-    { label: "Về chúng tôi", to: "/#about" },
-    { label: "Liên hệ",      to: "/#contact" },
+    { label: t("nav.home"),     to: "/" },
+    { label: t("nav.products"), to: "/products" },
+    { label: t("nav.about"),    to: "/#about" },
+    { label: t("nav.contact"),  to: "/#contact" },
   ];
 
   const isActive = (to: string) => {
@@ -82,7 +89,6 @@ export default function CustomerLayout() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
-
       <header className="sticky top-0 z-50 shadow-md">
 
         {/* HÀNG 1 */}
@@ -101,17 +107,19 @@ export default function CustomerLayout() {
 
               <div className="hidden sm:flex items-center gap-1">
                 <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" title="Facebook"
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                  <FacebookIcon />
-                </a>
+                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><FacebookIcon /></a>
                 <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer" title="Instagram"
-                  className="p-2 text-gray-400 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
-                  <InstagramIcon />
-                </a>
+                  className="p-2 text-gray-400 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors"><InstagramIcon /></a>
                 <a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer" title="TikTok"
-                  className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                  <TiktokIcon />
-                </a>
+                  className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"><TiktokIcon /></a>
+
+                {/* Nút chuyển ngôn ngữ */}
+                <button
+                  onClick={toggleLang}
+                  className="ml-1 px-2.5 py-1 text-xs font-bold border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-gray-600"
+                >
+                  {i18n.language === "vi" ? "🇬🇧 EN" : "🇻🇳 VI"}
+                </button>
               </div>
 
               <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="sm:hidden p-2 hover:bg-gray-100 rounded-xl">
@@ -132,8 +140,7 @@ export default function CustomerLayout() {
                     <Link key={link.label} to={link.to}
                       className={`flex items-center gap-1.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${
                         active ? "text-white" : "text-white/70 hover:text-white"
-                      }`}
-                    >
+                      }`}>
                       {link.label}
                       {active && <span className="text-white text-[10px] leading-none">▾</span>}
                     </Link>
@@ -143,19 +150,26 @@ export default function CustomerLayout() {
 
               <div className="flex items-center gap-1">
                 {searchOpen ? (
-                  <form onSubmit={handleTrack} className="flex items-center gap-1">
+                  <form onSubmit={handleTrack} className="relative flex items-center gap-1">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/60" />
                       <input autoFocus type="text" value={trackingCode}
-                        onChange={(e) => setTrackingCode(e.target.value)}
-                        placeholder="Nhập mã đơn hàng..."
-                        className="w-40 pl-8 pr-3 py-1.5 rounded-lg border border-white/40 bg-white/20 text-white placeholder-white/60 text-xs outline-none focus:bg-white/30"
+                        onChange={(e) => { setTrackingCode(e.target.value); setTrackingError(""); }}
+                        placeholder={t("header.tracking")}
+                        className={`w-44 pl-8 pr-3 py-1.5 rounded-lg border bg-white/20 text-white placeholder-white/60 text-xs outline-none focus:bg-white/30 ${trackingError ? "border-red-300" : "border-white/40"}`}
                       />
                     </div>
-                    <button type="submit" className="px-2.5 py-1.5 bg-white text-[#d35f1a] text-xs rounded-lg hover:bg-white/90 font-bold">Tìm</button>
-                    <button type="button" onClick={() => { setSearchOpen(false); setTrackingCode(""); }} className="p-1.5 text-white/70 hover:text-white">
+                    <button type="submit" className="px-2.5 py-1.5 bg-white text-[#d35f1a] text-xs rounded-lg hover:bg-white/90 font-bold">
+                      {t("header.find")}
+                    </button>
+                    <button type="button" onClick={() => { setSearchOpen(false); setTrackingCode(""); setTrackingError(""); }} className="p-1.5 text-white/70 hover:text-white">
                       <X className="w-4 h-4" />
                     </button>
+                    {trackingError && (
+                      <span className="absolute top-full mt-1 left-0 bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap z-50 shadow">
+                        {trackingError}
+                      </span>
+                    )}
                   </form>
                 ) : (
                   <button onClick={() => setSearchOpen(true)} className="p-2 text-white/80 hover:text-white hover:bg-white/15 rounded-lg transition-colors">
@@ -164,8 +178,7 @@ export default function CustomerLayout() {
                 )}
 
                 <a href="tel:1900xxxx" className="hidden md:flex items-center gap-1.5 text-[11px] font-semibold text-white/90 hover:text-white transition-colors px-2">
-                  <Phone className="w-3.5 h-3.5" />
-                  1900-ALE-FARMS
+                  <Phone className="w-3.5 h-3.5" /> 1900-ALE-FARMS
                 </a>
 
                 <Link to="/cart" className="relative p-2 text-white/80 hover:text-white hover:bg-white/15 rounded-lg transition-colors">
@@ -196,15 +209,14 @@ export default function CustomerLayout() {
                             <div className="text-xs text-gray-500">{user?.email}</div>
                           </div>
                           <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                            <LogOut className="w-4 h-4" /> Đăng xuất
+                            <LogOut className="w-4 h-4" /> {t("header.logout")}
                           </button>
                         </div>
                       )}
                     </>
                   ) : (
                     <Link to="/login" className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#d35f1a] rounded-lg text-xs font-bold hover:bg-white/90 transition-colors">
-                      <User className="w-3.5 h-3.5" />
-                      Đăng nhập
+                      <User className="w-3.5 h-3.5" /> {t("header.login")}
                     </Link>
                   )}
                 </div>
@@ -228,6 +240,9 @@ export default function CustomerLayout() {
               <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-600"><FacebookIcon /></a>
               <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-600"><InstagramIcon /></a>
               <a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer" className="text-gray-900"><TiktokIcon /></a>
+              <button onClick={toggleLang} className="ml-auto px-2.5 py-1 text-xs font-bold border border-gray-200 rounded-lg text-gray-600">
+                {i18n.language === "vi" ? "🇬🇧 EN" : "🇻🇳 VI"}
+              </button>
             </div>
             <div className="flex items-center justify-between px-6 py-3">
               <a href="tel:1900xxxx" className="flex items-center gap-2 text-sm text-gray-600">
@@ -243,12 +258,10 @@ export default function CustomerLayout() {
                   )}
                 </Link>
                 {user ? (
-                  <button onClick={handleLogout} className="p-2 text-red-500">
-                    <LogOut className="w-5 h-5" />
-                  </button>
+                  <button onClick={handleLogout} className="p-2 text-red-500"><LogOut className="w-5 h-5" /></button>
                 ) : (
                   <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="px-3 py-1.5 bg-[#d35f1a] text-white rounded-lg text-xs font-bold">
-                    Đăng nhập
+                    {t("header.login")}
                   </Link>
                 )}
               </div>
@@ -268,20 +281,15 @@ export default function CustomerLayout() {
                 <img src="/images/logo.jpg" alt="ALE Farm's" className="w-8 h-8 rounded-lg object-cover" />
                 <span className="font-bold text-[#D4A853]">ALE Farm's</span>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Đặc sản thịt hun khói từ núi rừng Tây Bắc. Chế biến theo phương pháp truyền thống, chất lượng không khoan nhượng.
-              </p>
+              <p className="text-gray-400 text-sm leading-relaxed">{t("footer.desc")}</p>
               <div className="flex items-center gap-3 mt-4">
-                <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-blue-400 transition-colors"><FacebookIcon /></a>
-                <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-pink-400 transition-colors"><InstagramIcon /></a>
-                <a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"><TiktokIcon /></a>
+                <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-400 transition-colors"><FacebookIcon /></a>
+                <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-400 transition-colors"><InstagramIcon /></a>
+                <a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors"><TiktokIcon /></a>
               </div>
             </div>
             <div>
-              <h4 className="font-semibold text-white mb-3">Sản phẩm</h4>
+              <h4 className="font-semibold text-white mb-3">{t("footer.products")}</h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li><Link to="/products?category=buffalo" className="hover:text-[#D4A853]">Thịt gác bếp</Link></li>
                 <li><Link to="/products?category=pork"    className="hover:text-[#D4A853]">Thịt hun khói</Link></li>
@@ -290,16 +298,16 @@ export default function CustomerLayout() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-white mb-3">Hỗ trợ</h4>
+              <h4 className="font-semibold text-white mb-3">{t("footer.support")}</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-[#D4A853]">Theo dõi đơn hàng</a></li>
-                <li><a href="#" className="hover:text-[#D4A853]">Chính sách vận chuyển</a></li>
-                <li><a href="#" className="hover:text-[#D4A853]">Đổi trả hàng</a></li>
-                <li><a href="#" className="hover:text-[#D4A853]">Câu hỏi thường gặp</a></li>
+                <li><a href="#" className="hover:text-[#D4A853]">{t("footer.track")}</a></li>
+                <li><a href="#" className="hover:text-[#D4A853]">{t("footer.shipping")}</a></li>
+                <li><a href="#" className="hover:text-[#D4A853]">{t("footer.return")}</a></li>
+                <li><a href="#" className="hover:text-[#D4A853]">{t("footer.faq")}</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-white mb-3">Liên hệ</h4>
+              <h4 className="font-semibold text-white mb-3">{t("footer.contact")}</h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li className="flex items-center gap-2"><Phone className="w-3 h-3" /> 1900-ALE-FARMS</li>
                 <li><a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-[#D4A853]">Facebook: ALE Farm's</a></li>
@@ -309,7 +317,7 @@ export default function CustomerLayout() {
             </div>
           </div>
           <div className="border-t border-white/10 mt-8 pt-8 text-center text-xs text-gray-500">
-            © 2026 ALE Farm's. Đạt chứng nhận An toàn Thực phẩm VSATTP. Bảo lưu mọi quyền.
+            {t("footer.copyright")}
           </div>
         </div>
       </footer>
@@ -318,19 +326,17 @@ export default function CustomerLayout() {
       {toast && (
         <div className="fixed bottom-24 right-6 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 flex items-center gap-3 max-w-xs">
-            <img
-              src={toast.image}
-              alt={toast.name}
-              className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
-            />
+            <img src={toast.image} alt={toast.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                   <Check className="w-2.5 h-2.5 text-white" />
                 </div>
-                <span className="text-xs font-semibold text-green-600">Đã thêm vào giỏ</span>
+                <span className="text-xs font-semibold text-green-600">{t("product.addedToCart")}</span>
               </div>
-              <p className="text-sm font-medium text-gray-900 truncate">{toast.name}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {toast.name} has been added to your cart!
+              </p>
             </div>
             <button onClick={() => setToast(null)} className="p-1 hover:bg-gray-100 rounded-lg flex-shrink-0">
               <X className="w-3.5 h-3.5 text-gray-400" />
@@ -338,7 +344,6 @@ export default function CustomerLayout() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
