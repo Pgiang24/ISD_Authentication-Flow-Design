@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, CreditCard, Truck, CheckCircle } from "lucide-react";
+import { ChevronLeft, CreditCard, Truck, CheckCircle, AlertTriangle, X } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
@@ -13,19 +13,22 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState<1 | 2>(1);
-  const [loading, setLoading] = useState(false);
+  const [step, setStep]                 = useState<1 | 2>(1);
+  const [loading, setLoading]           = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
+
+  // Inline error thay vì alert()
+  const [placeOrderError, setPlaceOrderError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     fullName: user?.name || "",
-    phone: user?.phone || "",
-    email: user?.email || "",
-    address: "",
-    city: "",
+    phone:    user?.phone || "",
+    email:    user?.email || "",
+    address:  "",
+    city:     "",
     district: "",
-    ward: "",
-    notes: "",
+    ward:     "",
+    notes:    "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -37,9 +40,9 @@ export default function CheckoutPage() {
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.fullName.trim()) errs.fullName = "Full name is required";
-    if (!form.phone.trim()) errs.phone = "Phone number is required";
-    if (!form.address.trim()) errs.address = "Address is required";
-    if (!form.city.trim()) errs.city = "City is required";
+    if (!form.phone.trim())    errs.phone    = "Phone number is required";
+    if (!form.address.trim())  errs.address  = "Address is required";
+    if (!form.city.trim())     errs.city     = "City is required";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -49,53 +52,61 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async () => {
-  setLoading(true);
-  try {
-    const orderItems = items.map((item) => ({
-      productId: item.product.id,
-      name:      item.product.name,
-      weight:    item.selectedWeight,
-      qty:       item.quantity,
-      price:     item.product.variants.find((v) => v.weight === item.selectedWeight)?.price
-                 || item.product.basePrice,
-    }));
+    setLoading(true);
+    setPlaceOrderError(null);
+    try {
+      const orderItems = items.map((item) => ({
+        productId: item.product.id,
+        name:      item.product.name,
+        weight:    item.selectedWeight,
+        qty:       item.quantity,
+        price:     item.product.variants.find((v) => v.weight === item.selectedWeight)?.price
+                   || item.product.basePrice,
+      }));
 
-    const data = await apiFetch<{ orderCode: string }>("/api/orders", {
-      method: "POST",
-      body: JSON.stringify({
-        userId:        JSON.parse(localStorage.getItem("ale_farms_user") || "{}").id || null,
-        customer:      form.fullName,
-        phone:         form.phone,
-        email:         form.email,
-        address:       `${form.address}, ${form.district}, ${form.city}`,
-        items:         orderItems,
-        total:         grandTotal,
-        paymentMethod,
-        channelId:     1,
-      }),
-    });
+      const data = await apiFetch<{ orderCode: string }>("/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          userId:        JSON.parse(localStorage.getItem("ale_farms_user") || "{}").id || null,
+          customer:      form.fullName,
+          phone:         form.phone,
+          email:         form.email,
+          address:       `${form.address}, ${form.district}, ${form.city}`,
+          city:          form.city,
+          district:      form.district,
+          ward:          form.ward,
+          deliveryNotes: form.notes,
+          items:         orderItems,
+          total:         grandTotal,
+          paymentMethod,
+          channelId:     1,
+        }),
+      });
 
-    clearCart();
-    navigate("/order-confirmation", {
-      state: {
-        orderCode: data.orderCode,
-        paymentMethod,
-        form,
-        total: grandTotal,
-      },
-    });
-  } catch (err: any) {
-    alert(`Lỗi: ${err.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+      clearCart();
+      navigate("/order-confirmation", {
+        state: {
+          orderCode: data.orderCode,
+          paymentMethod,
+          form,
+          total: grandTotal,
+        },
+      });
+    } catch (err: any) {
+      // Hiện lỗi inline thay vì alert — đặc biệt quan trọng cho lỗi hết hàng
+      setPlaceOrderError(err.message || "Không thể đặt hàng. Vui lòng thử lại.");
+      // Scroll lên để user thấy lỗi
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const subtotal = items.reduce((sum, i) => {
+  const subtotal   = items.reduce((sum, i) => {
     const price = i.product.variants.find((v) => v.weight === i.selectedWeight)?.price || i.product.basePrice;
     return sum + price * i.quantity;
   }, 0);
-  const shipping = subtotal >= 500000 ? 0 : 30000;
+  const shipping   = subtotal >= 500000 ? 0 : 30000;
   const grandTotal = subtotal * (1 - discount) + shipping;
 
   const InputField = ({
@@ -124,7 +135,10 @@ export default function CheckoutPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => step === 2 ? setStep(1) : navigate("/customer/cart")} className="text-gray-500 hover:text-gray-700 flex items-center gap-1">
+        <button
+          onClick={() => step === 2 ? setStep(1) : navigate("/cart")}
+          className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
+        >
           <ChevronLeft className="w-5 h-5" /> Back
         </button>
         <div className="flex items-center gap-3">
@@ -140,6 +154,28 @@ export default function CheckoutPage() {
         </div>
       </div>
 
+      {/* Inline error banner — hiện khi đặt hàng thất bại (hết hàng, lỗi mạng...) */}
+      {placeOrderError && (
+        <div className="flex items-start justify-between gap-3 px-4 py-4 mb-6 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold mb-1">Không thể đặt hàng</p>
+              <p>{placeOrderError}</p>
+              {/* Gợi ý nếu là lỗi hết hàng */}
+              {(placeOrderError.includes("hết hàng") || placeOrderError.includes("chỉ còn") || placeOrderError.includes("đang được xử lý")) && (
+                <p className="mt-2 text-red-600">
+                  Vui lòng quay lại giỏ hàng để điều chỉnh số lượng hoặc xóa sản phẩm hết hàng.
+                </p>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setPlaceOrderError(null)} className="p-1 hover:bg-red-100 rounded-lg flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form */}
         <div className="lg:col-span-2">
@@ -149,15 +185,14 @@ export default function CheckoutPage() {
                 <Truck className="w-5 h-5 text-[#7C2D12]" /> Delivery Information
               </h2>
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Full Name" field="fullName" placeholder="Nguyen Van A" required />
-                <InputField label="Phone Number" field="phone" type="tel" placeholder="09xx xxx xxx" required half />
-                <InputField label="Email" field="email" type="email" placeholder="you@example.com" half />
+                <InputField label="Full Name"    field="fullName" placeholder="Nguyen Van A"       required />
+                <InputField label="Phone Number" field="phone"    type="tel" placeholder="09xx xxx xxx" required half />
+                <InputField label="Email"        field="email"    type="email" placeholder="you@example.com" half />
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Street Address <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={form.address}
-                    onChange={set("address")}
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Street Address <span className="text-red-500">*</span>
+                  </label>
+                  <input type="text" value={form.address} onChange={set("address")}
                     placeholder="123 Main Street, Apt 4B"
                     className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${errors.address ? "border-red-400" : "border-gray-200"}`}
                   />
@@ -169,10 +204,7 @@ export default function CheckoutPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1.5 capitalize">
                         {f} {i === 0 && <span className="text-red-500">*</span>}
                       </label>
-                      <input
-                        type="text"
-                        value={(form as any)[f]}
-                        onChange={set(f)}
+                      <input type="text" value={(form as any)[f]} onChange={set(f)}
                         placeholder={f.charAt(0).toUpperCase() + f.slice(1)}
                         className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/20 ${errors[f] ? "border-red-400" : "border-gray-200"}`}
                       />
@@ -182,19 +214,14 @@ export default function CheckoutPage() {
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Delivery Notes (optional)</label>
-                  <textarea
-                    value={form.notes}
-                    onChange={set("notes")}
-                    rows={3}
+                  <textarea value={form.notes} onChange={set("notes")} rows={3}
                     placeholder="E.g. Leave at door, call before delivery..."
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:bg-white focus:border-[#7C2D12] resize-none"
                   />
                 </div>
               </div>
-              <button
-                onClick={handleContinue}
-                className="mt-6 w-full py-4 bg-[#d35f1a] hover:bg-[#c05518] text-white rounded-xl font-bold transition-all active:scale-95"
-              >
+              <button onClick={handleContinue}
+                className="mt-6 w-full py-4 bg-[#d35f1a] hover:bg-[#c05518] text-white rounded-xl font-bold transition-all active:scale-95">
                 Continue to Payment
               </button>
             </div>
@@ -203,9 +230,7 @@ export default function CheckoutPage() {
               <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-[#7C2D12]" /> Payment Method
               </h2>
-
               <div className="space-y-3">
-                {/* COD */}
                 <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === "cod" ? "border-[#7C2D12] bg-[#7C2D12]/5" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" name="payment" value="cod" checked={paymentMethod === "cod"} onChange={() => setPaymentMethod("cod")} className="accent-[#7C2D12]" />
                   <div className="flex items-center gap-3">
@@ -217,7 +242,6 @@ export default function CheckoutPage() {
                   </div>
                 </label>
 
-                {/* Bank Transfer */}
                 <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === "bank" ? "border-[#7C2D12] bg-[#7C2D12]/5" : "border-gray-200 hover:border-gray-300"}`}>
                   <input type="radio" name="payment" value="bank" checked={paymentMethod === "bank"} onChange={() => setPaymentMethod("bank")} className="accent-[#7C2D12]" />
                   <div className="flex items-center gap-3">
@@ -247,12 +271,9 @@ export default function CheckoutPage() {
                 <div className="text-sm text-gray-600">{form.address}, {form.district}, {form.city}</div>
               </div>
 
-              <button
-                onClick={handlePlaceOrder}
-                disabled={loading}
-                className="mt-6 w-full py-4 bg-[#d35f1a] hover:bg-[#c05518] text-white rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70"
-              >
-                {loading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+              <button onClick={handlePlaceOrder} disabled={loading}
+                className="mt-6 w-full py-4 bg-[#d35f1a] hover:bg-[#c05518] text-white rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70">
+                {loading && <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 {loading ? "Placing Order..." : `Place Order • ${formatPrice(grandTotal)}`}
               </button>
             </div>

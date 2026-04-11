@@ -11,6 +11,18 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     ...options,
   });
 
+  // US1: Session expired — 401 trong lúc đang dùng app
+  if (res.status === 401) {
+    // Xóa session
+    localStorage.removeItem("ale_farms_user");
+    localStorage.removeItem("ale_farms_token");
+    // Lưu message để AuthPage hiển thị
+    sessionStorage.setItem("ale_auth_message", "session_expired");
+    // Redirect về login
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Lỗi không xác định" }));
     throw new Error(err.error || "API error");

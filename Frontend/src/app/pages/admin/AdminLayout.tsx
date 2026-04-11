@@ -29,7 +29,7 @@ export default function AdminLayout() {
   const [notifications] = useState(3);
 
   const handleLogout = () => {
-    logout();
+    logout("user_action");
     navigate("/");
   };
 

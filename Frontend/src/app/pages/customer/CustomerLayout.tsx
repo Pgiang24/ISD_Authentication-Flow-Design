@@ -52,7 +52,7 @@ export default function CustomerLayout() {
     }
     prevCountRef.current = itemCount;
   }, [itemCount, items]);
-  const handleLogout = () => { logout(); navigate("/"); setProfileMenuOpen(false); };
+  const handleLogout = () => { logout("user_action"); navigate("/"); setProfileMenuOpen(false); };
 
   const [trackingError, setTrackingError] = useState("");
 

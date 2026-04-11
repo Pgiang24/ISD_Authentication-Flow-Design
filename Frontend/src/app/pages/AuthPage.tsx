@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Eye, EyeOff, Check, Mountain, Leaf, Shield } from "lucide-react";
+import { Eye, EyeOff, Check, Mountain, Leaf, Shield, CheckCircle, AlertTriangle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 type Mode = "login" | "register";
@@ -59,9 +59,24 @@ export default function AuthPage() {
     name: "", email: "", phone: "", password: "", confirmPassword: "",
   });
   const [successMsg, setSuccessMsg] = useState("");
-
-  // Field-level touched state for green/red border feedback
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // US1: Đọc message từ sessionStorage (logout / session expired)
+  const [authNotice, setAuthNotice] = useState<{
+    type: "success" | "warning";
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const msg = sessionStorage.getItem("ale_auth_message");
+    if (msg === "signed_out") {
+      setAuthNotice({ type: "success", text: "You have been logged out of your session." });
+      sessionStorage.removeItem("ale_auth_message");
+    } else if (msg === "session_expired") {
+      setAuthNotice({ type: "warning", text: "Session expired. Please sign in again." });
+      sessionStorage.removeItem("ale_auth_message");
+    }
+  }, []);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     if (field === "phone") {
@@ -74,16 +89,12 @@ export default function AuthPage() {
     setError("");
   };
 
-  // Per-field validation helpers
-  const isNameValid = (v: string) =>
-    v.trim().length >= 1 && v.trim().length <= 100 && /[a-zA-ZÀ-ỹ]/.test(v);
-  const isEmailValid = (v: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 100;
+  const isNameValid  = (v: string) => v.trim().length >= 1 && v.trim().length <= 100 && /[a-zA-ZÀ-ỹ]/.test(v);
+  const isEmailValid = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 100;
   const isPhoneValid = (v: string) => /^0[0-9]{9}$/.test(v);
   const isPasswordValid = (v: string) => v.length >= 8 && v.length <= 100;
-  const isConfirmValid = (v: string, p: string) => v === p && v.length > 0;
+  const isConfirmValid  = (v: string, p: string) => v === p && v.length > 0;
 
-  // Border state helper: default=gray, valid=green, invalid=red
   const fieldBorder = (field: string, isValid: boolean) => {
     if (!touched[field]) return "border-gray-200";
     return isValid ? "border-green-500 ring-1 ring-green-200" : "border-red-400 ring-1 ring-red-100";
@@ -107,7 +118,6 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mark all fields touched for border feedback
     setTouched({ name: true, email: true, phone: true, password: true, confirmPassword: true });
 
     if (!form.name || !form.email || !form.phone || !form.password || !form.confirmPassword) {
@@ -119,30 +129,21 @@ export default function AuthPage() {
         : "Full name contains invalid characters"); return;
     }
     if (!isEmailValid(form.email)) {
-      setError(form.email.length > 100
-        ? "Email must not exceed 100 characters"
-        : "Please enter a valid email address"); return;
+      setError(form.email.length > 100 ? "Email must not exceed 100 characters" : "Please enter a valid email address"); return;
     }
-    if (!isPhoneValid(form.phone)) {
-      setError("Please enter a valid phone number"); return;
-    }
-    if (!isPasswordValid(form.password)) {
-      setError("Password must be between 8-100 characters"); return;
-    }
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match"); return;
-    }
+    if (!isPhoneValid(form.phone)) { setError("Please enter a valid phone number"); return; }
+    if (!isPasswordValid(form.password)) { setError("Password must be between 8-100 characters"); return; }
+    if (form.password !== form.confirmPassword) { setError("Passwords do not match"); return; }
+
     setLoading(true);
     const result = await register(form.name, form.email, form.password, form.phone);
     setLoading(false);
     if (result.success) {
-      // US1: Do NOT auto-login — show success message and redirect to login
       setSuccessMsg("Your account has been successfully created. Please log in.");
       setForm({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
       setTouched({});
       setTimeout(() => { setMode("login"); setSuccessMsg(""); }, 3000);
     } else {
-      // Map API errors to specific messages
       const msg = result.error || "";
       if (msg.toLowerCase().includes("email")) setError("This email is already registered");
       else if (msg.toLowerCase().includes("phone")) setError("This phone number is already registered");
@@ -211,14 +212,29 @@ export default function AuthPage() {
             </div>
           </div>
 
+          {/* US1: Auth notice banner (logout / session expired) */}
+          {authNotice && (
+            <div className={`flex items-start gap-3 p-4 rounded-xl mb-5 border text-sm ${
+              authNotice.type === "success"
+                ? "bg-green-50 border-green-200 text-green-800"
+                : "bg-amber-50 border-amber-200 text-amber-800"
+            }`}>
+              {authNotice.type === "success"
+                ? <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                : <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              }
+              <span>{authNotice.text}</span>
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl shadow-xl p-8">
             {/* Tabs */}
             <div className="flex rounded-xl bg-[#FAF7F2] p-1 mb-8">
-              <button onClick={() => { setMode("login"); setError(""); }}
+              <button onClick={() => { setMode("login"); setError(""); setAuthNotice(null); }}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "login" ? "bg-white shadow text-[#7C2D12]" : "text-gray-500 hover:text-gray-700"}`}>
                 {t("auth.login")}
               </button>
-              <button onClick={() => { setMode("register"); setError(""); }}
+              <button onClick={() => { setMode("register"); setError(""); setAuthNotice(null); }}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "register" ? "bg-white shadow text-[#7C2D12]" : "text-gray-500 hover:text-gray-700"}`}>
                 {t("auth.signup")}
               </button>

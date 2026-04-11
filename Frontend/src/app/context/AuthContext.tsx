@@ -16,7 +16,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  // US1: logout nhận reason để hiện đúng message trên login page
+  logout: (reason?: "user_action" | "session_expired") => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -53,17 +54,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         body: JSON.stringify({ name, email, password, phone }),
       });
-      // Tự động login sau khi đăng ký thành công
       return await login(email, password);
     } catch (e: any) {
       return { success: false, error: e.message };
     }
   };
 
-  const logout = () => {
+  // US1: logout với reason
+  const logout = (reason: "user_action" | "session_expired" = "user_action") => {
     setUser(null);
     localStorage.removeItem("ale_farms_user");
     localStorage.removeItem("ale_farms_token");
+    // Lưu message vào sessionStorage để AuthPage đọc
+    if (reason === "user_action") {
+      sessionStorage.setItem("ale_auth_message", "signed_out");
+    } else {
+      sessionStorage.setItem("ale_auth_message", "session_expired");
+    }
   };
 
   return (
