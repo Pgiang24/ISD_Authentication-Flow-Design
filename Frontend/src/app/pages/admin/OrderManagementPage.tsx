@@ -121,7 +121,9 @@ function OrderDrawer({
           )}
 
           <div className="bg-[#FAF7F2] rounded-xl p-4">
-            <div className="font-mono font-bold text-[#7C2D12] text-lg">{order.id}</div>
+            <div className="font-mono font-bold text-[#7C2D12] text-lg">
+              #{order.id.replace("ALE-ORDER-", "")}
+            </div>
             <div className="text-sm text-gray-500 mt-1">{order.date || "—"}</div>
           </div>
 
@@ -240,7 +242,10 @@ export default function OrderManagementPage() {
   // US9: validate order trước khi mở drawer
   const [rowActionError, setRowActionError] = useState<string | null>(null);
 
-  const orders: MappedOrder[] = rawOrders.map(mapOrder);
+  // De-duplicate: loại bỏ đơn hàng trùng id
+  const orders: MappedOrder[] = rawOrders
+    .map(mapOrder)
+    .filter((o, i, arr) => arr.findIndex((x) => x.id === o.id) === i);
 
   // US8 business rule: nếu status config không đủ → show error
   const statusConfigError = !STATUS_CONFIG_VALID
@@ -414,14 +419,18 @@ export default function OrderManagementPage() {
                 <tr>
                   <td colSpan={7} className="text-center py-16 text-gray-400">
                     <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm">No orders match your search</p>
+                    <p className="text-sm">
+                      {orders.length === 0 ? "No orders available." : "No orders match your search"}
+                    </p>
                   </td>
                 </tr>
               ) : (
                 paginated.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
-                      <span className="font-mono text-sm font-medium text-[#7C2D12]">{order.id}</span>
+                      <span className="font-mono text-sm font-medium text-[#7C2D12]">
+                        #{order.id.replace("ALE-ORDER-", "")}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm font-medium text-gray-900">{order.customer}</div>
@@ -450,7 +459,8 @@ export default function OrderManagementPage() {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => handleViewOrder(order)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-[#7C2D12] hover:text-[#7C2D12] transition-all"
+                        disabled={!!selectedOrder}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-[#7C2D12] hover:text-[#7C2D12] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         title="View order details"
                       >
                         <Eye className="w-3.5 h-3.5" /> View

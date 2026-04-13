@@ -49,7 +49,7 @@ function groupInventory(rows: InventoryRow[]): InventoryItem[] {
         name:        row.product_name || "Unknown",
         image:       row.image_url ? `/images/${row.image_url}` : "/images/logo.jpg",
         category:    row.category_name || "Sản phẩm",
-        lastUpdated: row.last_update?.split("T")[0] || "",
+        lastUpdated: row.last_update?.split("T")[0] || "-",
         variants:    [],
       });
     }
@@ -70,6 +70,8 @@ function groupInventory(rows: InventoryRow[]): InventoryItem[] {
 }
 
 function getStockStatus(stock: number) {
+  // US10 business rule: negative stock must not be displayed as normal status
+  if (stock < 0)          return { label: "Invalid",      classes: "bg-gray-100 text-gray-500 border-gray-200",   icon: "⚠️" };
   if (stock === 0)        return { label: "Out of Stock", classes: "bg-red-100 text-red-700 border-red-200",      icon: "🔴" };
   if (stock <= LOW_STOCK) return { label: "Low Stock",    classes: "bg-amber-100 text-amber-700 border-amber-200", icon: "🟡" };
   return                         { label: "In Stock",     classes: "bg-green-100 text-green-700 border-green-200", icon: "🟢" };
@@ -305,7 +307,7 @@ export default function InventoryPage() {
                                 <div className="font-medium text-sm text-gray-900">{item.name}</div>
                                 <div className="text-xs text-gray-400 mt-0.5">{item.category}</div>
                                 <div className="text-xs text-gray-400 mt-0.5">
-                                  Updated: <span className="font-medium">{item.lastUpdated}</span>
+                                  Updated: <span className="font-medium">{item.lastUpdated || "-"}</span>
                                 </div>
                               </div>
                             </div>

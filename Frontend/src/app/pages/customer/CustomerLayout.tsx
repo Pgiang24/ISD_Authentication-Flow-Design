@@ -52,7 +52,7 @@ export default function CustomerLayout() {
     }
     prevCountRef.current = itemCount;
   }, [itemCount, items]);
-  const handleLogout = () => { logout("user_action"); navigate("/"); setProfileMenuOpen(false); };
+  const handleLogout = () => { logout(); navigate("/"); setProfileMenuOpen(false); };
 
   const [trackingError, setTrackingError] = useState("");
 
@@ -269,6 +269,24 @@ export default function CustomerLayout() {
           </div>
         )}
       </header>
+
+      {/* Admin preview banner — chỉ hiện khi admin đang xem store */}
+      {user?.role === "admin" && (
+        <div className="sticky top-[88px] z-40 bg-[#1C0A00] text-white">
+          <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-white/80">
+              <span className="w-2 h-2 rounded-full bg-[#D4A853] inline-block flex-shrink-0" />
+              <span>You are previewing the store as <strong className="text-white">Admin</strong></span>
+            </div>
+            <a
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D4A853] hover:bg-[#C19442] text-[#1C0A00] rounded-lg text-xs font-bold transition-colors whitespace-nowrap flex-shrink-0"
+            >
+              ← Back to Admin Panel
+            </a>
+          </div>
+        </div>
+      )}
 
       <main><Outlet /></main>
 
