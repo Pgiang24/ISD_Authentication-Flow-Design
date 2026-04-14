@@ -91,7 +91,7 @@ export default function DashboardPage() {
   const fetchRev = async () => {
     setLoadRev(true); setErrRev(null);
     try   { const d = await apiFetch<any[]>("/api/dashboard/revenue"); setRevenue(Array.isArray(d) ? d : []); }
-    catch { setErrRev("Unable to load Revenue Overview. Please try again."); setRevenue([]); }
+    catch { setErrRev("Can't load Revenue Overview. Please try again."); setRevenue([]); }
     finally { setLoadRev(false); }
   };
   const fetchCat = async () => {
@@ -103,7 +103,7 @@ export default function DashboardPage() {
   const fetchOpm = async () => {
     setLoadOpm(true); setErrOpm(null);
     try   { const d = await apiFetch<any[]>("/api/dashboard/orders-per-month"); setOrdersMonth(Array.isArray(d) ? d : []); }
-    catch { setErrOpm("Unable to load Orders per Month. Please try again."); setOrdersMonth([]); }
+    catch { setErrOpm("Can't load Orders per Month. Please try again."); setOrdersMonth([]); }
     finally { setLoadOpm(false); }
   };
   const fetchRec = async () => {

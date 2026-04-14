@@ -12,7 +12,7 @@ import DashboardPage from "./pages/admin/DashboardPage";
 import OrderManagementPage from "./pages/admin/OrderManagementPage";
 import InventoryPage from "./pages/admin/InventoryPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
-
+ 
 function requireAdmin() {
   const stored = localStorage.getItem("ale_farms_user");
   if (!stored) return redirect("/login");
@@ -24,13 +24,29 @@ function requireAdmin() {
   }
   return null;
 }
-
+ 
 function requireAuth() {
   const stored = localStorage.getItem("ale_farms_user");
   if (!stored) return redirect("/login");
   return null;
 }
-
+ 
+// US1: "Page not found." cho invalid routes
+function NotFoundPage() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="text-center">
+        <div className="text-6xl font-bold text-gray-200 mb-4">404</div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-3">Page not found.</h1>
+        <p className="text-gray-500 mb-6">The page you are looking for does not exist.</p>
+        <a href="/" className="inline-flex items-center gap-2 px-5 py-3 bg-[#7C2D12] text-white rounded-xl font-semibold hover:bg-[#6B2510] transition-colors">
+          Back to Home
+        </a>
+      </div>
+    </div>
+  );
+}
+ 
 export const router = createBrowserRouter([
   // Customer routes — không cần đăng nhập
   {
@@ -63,6 +79,12 @@ export const router = createBrowserRouter([
       }
       return null;
     },
+  },
+  // 404 catch-all cho invalid routes — US1 "Page not found."
+  {
+    path: "*",
+    Component: CustomerLayout,
+    children: [{ index: true, Component: NotFoundPage }],
   },
   // Admin — cần đăng nhập + role admin
   {

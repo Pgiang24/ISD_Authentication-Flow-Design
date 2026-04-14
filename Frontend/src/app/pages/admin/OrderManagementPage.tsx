@@ -286,16 +286,18 @@ export default function OrderManagementPage() {
     const numId = order.order_id || Number(order.id.replace("ALE-ORDER-", ""));
     try {
       await apiFetch(`/api/orders/${numId}/status`, { method: "HEAD" }).catch(() => {
-        // HEAD có thể không được support — fallback: vẫn mở drawer nếu order có trong list
+        // HEAD không supported → vẫn mở drawer
       });
       setSelectedOrder(order);
-    } catch {
-      // Nếu order không còn tồn tại
-      setRowActionError("This order is no longer available.");
+    } catch (e: any) {
+      // Order không còn tồn tại hoặc route bị lỗi
+      if (e.message?.includes("404") || e.message?.includes("not found")) {
+        setRowActionError("This order is no longer available.");
+      } else {
+        setRowActionError("Could not open the selected order action.");
+      }
       return;
     }
-
-    setSelectedOrder(order);
   };
 
   const handleStatusChange = async (id: string, status: OrderStatus) => {
@@ -323,7 +325,7 @@ export default function OrderManagementPage() {
         <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>Could not load orders from server. Data may be incomplete.</span>
+            <span>Can't load order list. Please try again.</span>
           </div>
           <button onClick={refetch}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 rounded-lg font-medium transition-colors whitespace-nowrap">

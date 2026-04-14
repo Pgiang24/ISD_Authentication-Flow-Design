@@ -104,9 +104,9 @@ export default function InventoryPage() {
   const commitEdit = async () => {
     if (!editing) return;
     const num = Number(editValue);
-    if (!Number.isInteger(num))        { setEditError("Phải là số nguyên");              return; }
-    if (num < 0)                        { setEditError("Không được âm");                  return; }
-    if (editing.field === "price" && num < 1000) { setEditError("Giá tối thiểu 1.000đ"); return; }
+    if (!Number.isInteger(num))        { setEditError("Please enter a valid number.");              return; }
+    if (num < 0)                        { setEditError(editing.field === "price" ? "Price cannot be negative." : "Stock cannot be negative."); return; }
+    if (editing.field === "price" && num < 1000) { setEditError("Price must be greater than 0 (min 1,000 VND)."); return; }
 
     setSaving(true);
     try {
@@ -122,7 +122,7 @@ export default function InventoryPage() {
       else                           await updatePrice(editing.variantId, num);
       setEditing(null);
     } catch (e: any) {
-      setEditError(e.message || "Lỗi lưu");
+      setEditError(editing.field === "price" ? "Unable to update product price. Please try again." : "Unable to update stock. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -146,8 +146,9 @@ export default function InventoryPage() {
   const saveModal = async () => {
     if (!modal) return;
     const errs = { price: "", stock: "" };
-    if (!Number.isInteger(modalVals.price) || modalVals.price < 1000) errs.price = "Giá tối thiểu 1.000đ";
-    if (!Number.isInteger(modalVals.stock) || modalVals.stock < 0)    errs.stock = "Không được âm";
+    if (!Number.isInteger(modalVals.price) || modalVals.price <= 0) errs.price = "Price must be greater than 0.";
+    if (modalVals.stock === null || modalVals.stock === undefined || isNaN(modalVals.stock)) errs.stock = "Stock quantity is required.";
+    else if (!Number.isInteger(modalVals.stock) || modalVals.stock < 0) errs.stock = "Stock cannot be negative.";
     if (errs.price || errs.stock) { setModalErrs(errs); return; }
 
     setModalSaving(true);
@@ -163,7 +164,7 @@ export default function InventoryPage() {
       await updatePrice(modal.variantId, modalVals.price);
       setModal(null);
     } catch (e: any) {
-      setModalErrs((p) => ({ ...p, stock: e.message || "Lỗi lưu" }));
+      setModalErrs((p) => ({ ...p, stock: e.message || "Unable to update. Please try again." }));
     } finally {
       setModalSaving(false);
     }
