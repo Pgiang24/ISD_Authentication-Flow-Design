@@ -74,17 +74,38 @@ export default function CustomerLayout() {
 
   const toggleLang = () => i18n.changeLanguage(i18n.language === "vi" ? "en" : "vi");
 
+  // Scroll đến section trong HomePage (about, contact)
+  // Nếu đang ở trang khác → navigate về / trước rồi scroll sau
+  const scrollToSection = (sectionId: string) => {
+    setMobileMenuOpen(false);
+    const doScroll = () => {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        const headerOffset = 88; // chiều cao header sticky (2 hàng)
+        const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    };
+    if (location.pathname !== "/") {
+      navigate("/");
+      // Chờ route render xong rồi scroll
+      setTimeout(doScroll, 300);
+    } else {
+      doScroll();
+    }
+  };
+
   const navLinks = [
-    { label: t("nav.home"),     to: "/" },
-    { label: t("nav.products"), to: "/products" },
-    { label: t("nav.about"),    to: "/#about" },
-    { label: t("nav.contact"),  to: "/#contact" },
+    { label: t("nav.home"),     to: "/",         section: null },
+    { label: t("nav.products"), to: "/products", section: null },
+    { label: t("nav.about"),    to: "/about",    section: null },
+    { label: t("nav.contact"),  to: "/contact",  section: null },
   ];
 
-  const isActive = (to: string) => {
+  const isActive = (to: string | null) => {
+    if (!to) return false;
     if (to === "/") return location.pathname === "/";
-    if (to === "/products") return location.pathname === "/products";
-    return false;
+    return location.pathname.startsWith(to);
   };
 
   return (
@@ -137,10 +158,8 @@ export default function CustomerLayout() {
                 {navLinks.map((link) => {
                   const active = isActive(link.to);
                   return (
-                    <Link key={link.label} to={link.to}
-                      className={`flex items-center gap-1.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${
-                        active ? "text-white" : "text-white/70 hover:text-white"
-                      }`}>
+                    <Link key={link.label} to={link.to!}
+                      className={`flex items-center gap-1.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${active ? "text-white" : "text-white/70 hover:text-white"}`}>
                       {link.label}
                       {active && <span className="text-white text-[10px] leading-none">▾</span>}
                     </Link>
@@ -177,8 +196,8 @@ export default function CustomerLayout() {
                   </button>
                 )}
 
-                <a href="tel:1900xxxx" className="hidden md:flex items-center gap-1.5 text-[11px] font-semibold text-white/90 hover:text-white transition-colors px-2">
-                  <Phone className="w-3.5 h-3.5" /> 1900-ALE-FARMS
+                <a href="tel:0965xxxxxx" className="hidden md:flex items-center gap-1.5 text-[11px] font-semibold text-white/90 hover:text-white transition-colors px-2">
+                  <Phone className="w-3.5 h-3.5" /> 0965303994
                 </a>
 
                 <Link to="/cart" className="relative p-2 text-white/80 hover:text-white hover:bg-white/15 rounded-lg transition-colors">
@@ -208,6 +227,10 @@ export default function CustomerLayout() {
                             <div className="text-sm font-medium text-gray-900">{user?.name}</div>
                             <div className="text-xs text-gray-500">{user?.email}</div>
                           </div>
+                          <a href="/settings" onClick={() => setProfileMenuOpen(false)}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                            ⚙️ Account Settings
+                          </a>
                           <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                             <LogOut className="w-4 h-4" /> {t("header.logout")}
                           </button>
@@ -229,7 +252,7 @@ export default function CustomerLayout() {
         {mobileMenuOpen && (
           <div className="sm:hidden bg-white border-t border-gray-100">
             {navLinks.map((link) => (
-              <Link key={link.label} to={link.to} onClick={() => setMobileMenuOpen(false)}
+              <Link key={link.label} to={link.to!} onClick={() => setMobileMenuOpen(false)}
                 className={`block px-6 py-3 text-sm font-medium border-b border-gray-50 ${
                   isActive(link.to) ? "text-[#7C2D12] bg-[#7C2D12]/5" : "text-gray-700"
                 }`}>
@@ -245,8 +268,8 @@ export default function CustomerLayout() {
               </button>
             </div>
             <div className="flex items-center justify-between px-6 py-3">
-              <a href="tel:1900xxxx" className="flex items-center gap-2 text-sm text-gray-600">
-                <Phone className="w-4 h-4 text-[#d35f1a]" /> 1900-ALE-FARMS
+              <a href="tel:0965xxxxxx" className="flex items-center gap-2 text-sm text-gray-600">
+                <Phone className="w-4 h-4 text-[#d35f1a]" /> 0965303994
               </a>
               <div className="flex items-center gap-2">
                 <Link to="/cart" className="relative p-2">
@@ -327,7 +350,7 @@ export default function CustomerLayout() {
             <div>
               <h4 className="font-semibold text-white mb-3">{t("footer.contact")}</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center gap-2"><Phone className="w-3 h-3" /> 1900-ALE-FARMS</li>
+                <li className="flex items-center gap-2"><Phone className="w-3 h-3" /> 0965303994</li>
                 <li><a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-[#D4A853]">Facebook: ALE Farm's</a></li>
                 <li><a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-[#D4A853]">Instagram: @ale_farm.vn</a></li>
                 <li><a href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer" className="hover:text-[#D4A853]">TikTok: @ale_farms_dayy</a></li>

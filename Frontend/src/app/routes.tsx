@@ -7,12 +7,15 @@ import ProductDetailPage from "./pages/customer/ProductDetailPage";
 import CartPage from "./pages/customer/CartPage";
 import CheckoutPage from "./pages/customer/CheckoutPage";
 import OrderConfirmationPage from "./pages/customer/OrderConfirmationPage";
+import SettingsPage from "./pages/customer/SettingsPage";
+import AboutPage from "./pages/customer/AboutPage";
+import ContactPage from "./pages/customer/ContactPage";
 import AdminLayout from "./pages/admin/AdminLayout";
 import DashboardPage from "./pages/admin/DashboardPage";
 import OrderManagementPage from "./pages/admin/OrderManagementPage";
 import InventoryPage from "./pages/admin/InventoryPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
- 
+
 function requireAdmin() {
   const stored = localStorage.getItem("ale_farms_user");
   if (!stored) return redirect("/login");
@@ -24,13 +27,13 @@ function requireAdmin() {
   }
   return null;
 }
- 
+
 function requireAuth() {
   const stored = localStorage.getItem("ale_farms_user");
   if (!stored) return redirect("/login");
   return null;
 }
- 
+
 // US1: "Page not found." cho invalid routes
 function NotFoundPage() {
   return (
@@ -46,7 +49,7 @@ function NotFoundPage() {
     </div>
   );
 }
- 
+
 export const router = createBrowserRouter([
   // Customer routes — không cần đăng nhập
   {
@@ -59,6 +62,9 @@ export const router = createBrowserRouter([
       { path: "cart", Component: CartPage, loader: () => requireAuth() },
       { path: "checkout", Component: CheckoutPage, loader: () => requireAuth() },
       { path: "order-confirmation", Component: OrderConfirmationPage, loader: () => requireAuth() },
+      { path: "settings", Component: SettingsPage, loader: () => requireAuth() },
+      { path: "about", Component: AboutPage },
+      { path: "contact", Component: ContactPage },
       // US1: Trang báo lỗi permission — nằm trong CustomerLayout để có header/footer
       { path: "unauthorized", Component: UnauthorizedPage },
     ],

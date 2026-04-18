@@ -8,10 +8,12 @@ import {
 import { useCart } from "../../context/CartContext";
 import { useProducts } from "../../hooks/useProducts";
 import { formatPrice, Product, ComboItem } from "../../data/products";
+import { useProductLang } from "../../hooks/useProductLang";
 
 function ProductCard({ product }: { product: Product }) {
   const { t } = useTranslation();
   const { addToCart } = useCart();
+  const { pName, pDesc } = useProductLang(product);
   const defaultVariant = product.variants[0];
   const inStock = product.variants.some((v) => v.stock > 0);
   const [comboOpen, setComboOpen] = useState(false);
@@ -21,7 +23,7 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group border border-gray-100">
       <Link to={`/product/${product.id}`} className="block relative overflow-hidden">
-        <img src={product.image} alt={product.name} className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500" />
+        <img src={product.image} alt={pName} className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500" />
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {!inStock && <span className="px-2.5 py-1 bg-gray-800/80 text-white text-xs rounded-full font-medium">{t("product.outOfStock")}</span>}
           {product.isCombo && <span className="px-2.5 py-1 bg-purple-600 text-white text-xs rounded-full font-medium">{t("product.combo")}</span>}
@@ -32,8 +34,8 @@ function ProductCard({ product }: { product: Product }) {
 
       <div className="p-4">
         <Link to={`/product/${product.id}`}>
-          <h3 className="font-semibold text-gray-900 group-hover:text-[#d35f1a] transition-colors leading-snug">{product.name}</h3>
-          <p className="text-gray-500 text-sm mt-1 line-clamp-2 leading-relaxed">{product.description}</p>
+          <h3 className="font-semibold text-gray-900 group-hover:text-[#d35f1a] transition-colors leading-snug">{pName}</h3>
+          <p className="text-gray-500 text-sm mt-1 line-clamp-2 leading-relaxed">{pDesc}</p>
         </Link>
 
         <div className="flex items-center gap-1 mt-2">
@@ -123,7 +125,7 @@ export default function HomePage() {
       {/* 1. HERO */}
       <section className="relative overflow-hidden min-h-[520px] flex items-center justify-center">
         <img
-          src="https://images.unsplash.com/photo-1750512705099-9273d6d50df8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1600"
+          src="/images/main_image.jpg"
           alt="Thịt hun khói ALE Farm's"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -169,7 +171,7 @@ export default function HomePage() {
 
       {/* 3. VỀ CHÚNG TÔI */}
       <section id="about" className="relative overflow-hidden">
-        <img src="https://images.unsplash.com/photo-1761054522074-1055ffd67616?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1400"
+        <img src="/images/Taybac.jpeg"
           alt="Trang trại ALE" className="w-full h-56 md:h-64 object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#1C0A00]/88 via-[#1C0A00]/55 to-transparent flex items-center">
           <div className="max-w-6xl mx-auto px-6 md:px-10 w-full">
@@ -190,7 +192,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
-              <img src="https://images.unsplash.com/photo-1757967708227-c67e37e7c96a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/images/main_1.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="self-end w-11 h-11 bg-[#D4A853] rounded-full flex flex-col items-center justify-center text-white font-black leading-tight shadow-lg text-center">
@@ -209,7 +211,7 @@ export default function HomePage() {
             </div>
 
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
-              <img src="https://images.unsplash.com/photo-1674066620885-6220ec2857f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/images/main_2.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
                 <span className="inline-block mb-2 px-2.5 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">Combo đặc biệt</span>
@@ -222,7 +224,7 @@ export default function HomePage() {
             </div>
 
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
-              <img src="https://images.unsplash.com/photo-1586816001966-79b736744398?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src="/images/main_3.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
                 <span className="inline-block mb-2 px-2.5 py-0.5 bg-[#2D6A4F] text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">Miễn phí vận chuyển</span>

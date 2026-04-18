@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Star, ShoppingCart, Filter, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useProducts } from "../../hooks/useProducts";
+import { useProductLang } from "../../hooks/useProductLang";
 import { formatPrice, Product } from "../../data/products";
 import { useCart } from "../../context/CartContext";
 
@@ -22,6 +23,7 @@ function useCategories() {
 function ProductCard({ product }: { product: Product }) {
   const { t } = useTranslation();
   const { addToCart } = useCart();
+  const { pName, pDesc } = useProductLang(product);
   const defaultVariant = product.variants[0];
   const inStock = product.variants.some((v) => v.stock > 0);
   const [comboOpen, setComboOpen] = useState(false);
@@ -31,7 +33,7 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group border border-gray-100 flex flex-col">
       <Link to={`/product/${product.id}`} className="block relative overflow-hidden flex-shrink-0">
-        <img src={product.image} alt={product.name} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
+        <img src={product.image} alt={pName} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {!inStock && <span className="px-2.5 py-1 bg-gray-800/80 text-white text-xs rounded-full font-medium">{t("product.outOfStock")}</span>}
           {product.isCombo && <span className="px-2.5 py-1 bg-purple-600 text-white text-xs rounded-full font-medium">{t("product.combo")}</span>}
@@ -42,8 +44,8 @@ function ProductCard({ product }: { product: Product }) {
 
       <div className="p-4 flex flex-col flex-1">
         <Link to={`/product/${product.id}`} className="flex-1">
-          <h3 className="font-semibold text-gray-900 group-hover:text-[#d35f1a] transition-colors leading-snug text-sm">{product.name}</h3>
-          <p className="text-gray-500 text-xs mt-1 line-clamp-2 leading-relaxed">{product.description}</p>
+          <h3 className="font-semibold text-gray-900 group-hover:text-[#d35f1a] transition-colors leading-snug text-sm">{pName}</h3>
+          <p className="text-gray-500 text-xs mt-1 line-clamp-2 leading-relaxed">{pDesc}</p>
         </Link>
 
         <div className="flex items-center gap-1 mt-2">
