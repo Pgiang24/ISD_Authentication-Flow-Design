@@ -174,5 +174,19 @@
     "labelTitle": "Nhãn",
     "manageLink": "Quản lý địa chỉ",
     "inSettings": "Cài đặt tài khoản"
-  }
+  },
+  "banners": {
+  "b1Title": "Đặc Sản\nTây Bắc",
+  "b1Desc": "Thịt hun khói truyền thống",
+  "b1Btn": "Đặt ngay",
+  "b2Title": "Mỹ Vị\nNhân Gian",
+  "b2Desc": "Trọn bộ 5 vị tinh tuyển",
+  "b2Btn": "Xem combo",
+  "b3Title": "Free Ship\nToàn Quốc",
+  "b3Desc": "Đơn hàng từ 500.000đ",
+  "b3Btn": "Mua ngay",
+  "b1Badge": "MUA 2\nTẶNG\n1 FREE",
+  "b2Badge": "Combo đặc biệt",
+  "b3Badge": "Miễn phí vận chuyển"
+}
 }

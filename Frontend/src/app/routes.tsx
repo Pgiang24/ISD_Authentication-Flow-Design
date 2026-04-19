@@ -9,6 +9,7 @@ import CheckoutPage from "./pages/customer/CheckoutPage";
 import OrderConfirmationPage from "./pages/customer/OrderConfirmationPage";
 import SettingsPage from "./pages/customer/SettingsPage";
 import AboutPage from "./pages/customer/AboutPage";
+import MyOrdersPage from "./pages/customer/MyOrdersPage";
 import ContactPage from "./pages/customer/ContactPage";
 import AdminLayout from "./pages/admin/AdminLayout";
 import DashboardPage from "./pages/admin/DashboardPage";
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: "order-confirmation", Component: OrderConfirmationPage, loader: () => requireAuth() },
       { path: "settings", Component: SettingsPage, loader: () => requireAuth() },
       { path: "about", Component: AboutPage },
+      { path: "my-orders", Component: MyOrdersPage, loader: () => requireAuth() },
       { path: "contact", Component: ContactPage },
       // US1: Trang báo lỗi permission — nằm trong CustomerLayout để có header/footer
       { path: "unauthorized", Component: UnauthorizedPage },

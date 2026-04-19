@@ -54,13 +54,13 @@ export default function ContactPage() {
     {
       icon: Phone,
       title: isEn ? "Hotline" : "Điện thoại",
-      lines: ["1900-ALE-FARMS", isEn ? "Mon–Sat, 8am–6pm" : "Thứ 2–7, 8:00–18:00"],
+      lines: ["0965303994", isEn ? "Mon–Sat, 8am–6pm" : "Thứ 2–7, 8:00–18:00"],
       color: "bg-[#7C2D12]/10 text-[#7C2D12]",
     },
     {
       icon: Mail,
       title: "Email",
-      lines: ["hello@alefarms.vn", isEn ? "Reply within 24 hours" : "Phản hồi trong 24 giờ"],
+      lines: ["hello@gmail.com", isEn ? "Reply within 24 hours" : "Phản hồi trong 24 giờ"],
       color: "bg-blue-50 text-blue-700",
     },
     {

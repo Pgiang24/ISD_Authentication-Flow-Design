@@ -74,7 +74,7 @@ function ProductCard({ product }: { product: Product }) {
             </button>
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${comboOpen ? "max-h-[500px] opacity-100 mt-3" : "max-h-0 opacity-0"}`}>
               <div className="space-y-2">
-                {product.comboItems.map((item: ComboItem, idx: number) => (
+                {product.comboItems.map((item: ComboItem) => (
                   <div key={item.id} className="flex items-start gap-3 p-2.5 bg-purple-50 rounded-xl border border-purple-100">
                     <img src={item.image || product.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -191,50 +191,71 @@ export default function HomePage() {
       <section className="bg-[#FAF7F2] py-8">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            {/* Banner 1 */}
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
               <img src="/images/main_1.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-between">
                 <div className="self-end w-11 h-11 bg-[#D4A853] rounded-full flex flex-col items-center justify-center text-white font-black leading-tight shadow-lg text-center">
-                  <span className="text-[6px] leading-none">MUA 2</span>
-                  <span className="text-[9px] leading-none">TẶNG</span>
-                  <span className="text-[6px] leading-none">1 FREE</span>
+                  {t("banners.b1Badge").split("\n").map((line: string, i: number) => (
+                    <span key={i} className={i === 1 ? "text-[9px] leading-none" : "text-[6px] leading-none"}>{line}</span>
+                  ))}
                 </div>
                 <div>
-                  <h3 className="text-white text-xl font-black leading-tight mb-1">Đặc Sản<br />Tây Bắc</h3>
-                  <p className="text-white/70 text-xs mb-3">Thịt hun khói truyền thống</p>
+                  <h3 className="text-white text-xl font-black leading-tight mb-1">
+                    {t("banners.b1Title").split("\n").map((line: string, i: number) => (
+                      <span key={i}>{line}{i === 0 && <br />}</span>
+                    ))}
+                  </h3>
+                  <p className="text-white/70 text-xs mb-3">{t("banners.b1Desc")}</p>
                   <Link to="/products" className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-[#7C2D12] rounded-full text-xs font-bold uppercase tracking-wide hover:bg-[#fff5ee] transition-colors">
-                    Đặt ngay <ArrowRight className="w-3 h-3" />
+                    {t("banners.b1Btn")} <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
               </div>
             </div>
 
+            {/* Banner 2 */}
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
               <img src="/images/main_2.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
-                <span className="inline-block mb-2 px-2.5 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">Combo đặc biệt</span>
-                <h3 className="text-white text-xl font-black leading-tight mb-1">Mỹ Vị<br />Nhân Gian</h3>
-                <p className="text-white/70 text-xs mb-3">Trọn bộ 5 vị tinh tuyển</p>
+                <span className="inline-block mb-2 px-2.5 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">
+                  {t("banners.b2Badge")}
+                </span>
+                <h3 className="text-white text-xl font-black leading-tight mb-1">
+                  {t("banners.b2Title").split("\n").map((line: string, i: number) => (
+                    <span key={i}>{line}{i === 0 && <br />}</span>
+                  ))}
+                </h3>
+                <p className="text-white/70 text-xs mb-3">{t("banners.b2Desc")}</p>
                 <Link to="/products?category=sausage" className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-[#7C2D12] rounded-full text-xs font-bold uppercase tracking-wide hover:bg-[#fff5ee] transition-colors w-fit">
-                  Xem combo <ArrowRight className="w-3 h-3" />
+                  {t("banners.b2Btn")} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
 
+            {/* Banner 3 */}
             <div className="relative overflow-hidden rounded-2xl aspect-[4/3]">
               <img src="/images/main_3.jpg" alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
               <div className="absolute inset-0 p-5 flex flex-col justify-end">
-                <span className="inline-block mb-2 px-2.5 py-0.5 bg-[#2D6A4F] text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">Miễn phí vận chuyển</span>
-                <h3 className="text-white text-xl font-black leading-tight mb-1">Free Ship<br />Toàn Quốc</h3>
-                <p className="text-white/70 text-xs mb-3">Đơn hàng từ 500.000đ</p>
+                <span className="inline-block mb-2 px-2.5 py-0.5 bg-[#2D6A4F] text-white text-[10px] font-bold rounded-full w-fit uppercase tracking-wide">
+                  {t("banners.b3Badge")}
+                </span>
+                <h3 className="text-white text-xl font-black leading-tight mb-1">
+                  {t("banners.b3Title").split("\n").map((line: string, i: number) => (
+                    <span key={i}>{line}{i === 0 && <br />}</span>
+                  ))}
+                </h3>
+                <p className="text-white/70 text-xs mb-3">{t("banners.b3Desc")}</p>
                 <Link to="/products" className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-[#7C2D12] rounded-full text-xs font-bold uppercase tracking-wide hover:bg-[#fff5ee] transition-colors w-fit">
-                  Mua ngay <ArrowRight className="w-3 h-3" />
+                  {t("banners.b3Btn")} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
+
           </div>
         </div>
       </section>

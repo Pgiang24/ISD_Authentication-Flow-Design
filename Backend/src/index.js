@@ -7,7 +7,6 @@ import ordersRouter     from "./routes/orders.js";
 import usersRouter      from "./routes/users.js";
 import inventoryRouter  from "./routes/inventory.js";
 import dashboardRouter  from "./routes/dashboard.js";
-import addressesRouter  from "./routes/addresses.js";
 
 dotenv.config();
 
@@ -21,7 +20,6 @@ app.use("/api/orders",    ordersRouter);
 app.use("/api/users",     usersRouter);
 app.use("/api/inventory", inventoryRouter);
 app.use("/api/dashboard", dashboardRouter);
-app.use("/api/addresses", addressesRouter);
 
 app.get("/api/health", (_, res) => res.json({ status: "ok", db: "supabase-v3" }));
 
@@ -47,11 +45,6 @@ app.get("/", (_, res) => res.json({
     dashboardCategories: "GET  /api/dashboard/sales-by-category",
     dashboardOrdersMonth:"GET  /api/dashboard/orders-per-month",
     dashboardRecent:     "GET  /api/dashboard/recent-orders",
-    addresses:           "GET  /api/addresses",
-    createAddress:       "POST /api/addresses",
-    updateAddress:       "PUT  /api/addresses/:id",
-    setDefaultAddress:   "PATCH /api/addresses/:id/default",
-    deleteAddress:       "DELETE /api/addresses/:id",
   },
 }));
 

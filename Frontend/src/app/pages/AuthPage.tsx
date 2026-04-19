@@ -164,7 +164,7 @@ export default function AuthPage() {
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <span className="text-2xl">🏔️</span>
+              <img src="/images/logo.jpg" alt="ALE Farm's" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="text-2xl font-bold tracking-tight">ALE Farm's</div>

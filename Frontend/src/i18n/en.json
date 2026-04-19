@@ -174,5 +174,19 @@
     "labelTitle": "Label",
     "manageLink": "Manage addresses",
     "inSettings": "Account Settings"
+  },
+  "banners": {
+  "b1Title": "Northwest\nSpecialties",
+  "b1Desc": "Traditional smoked meats",
+  "b1Btn": "Order now",
+  "b2Title": "Heavenly\nDelicacy",
+  "b2Desc": "Complete set of 5 premium flavors",
+  "b2Btn": "View combo",
+  "b3Title": "Free Ship\nNationwide",
+  "b3Desc": "Orders from 500,000đ",
+  "b3Btn": "Buy now",
+  "b1Badge": "BUY 2\nGET\n1 FREE",
+  "b2Badge": "Special combo",
+  "b3Badge": "Free shipping"
   }
 }
