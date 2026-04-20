@@ -7,7 +7,7 @@ import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { formatPrice } from "../../data/products";
 
-type PaymentMethod = "bank" | "cod";
+type PaymentMethod = "card" | "cod";
 
 interface SavedAddress {
   address_id: number;
@@ -294,8 +294,8 @@ export default function CheckoutPage() {
               </h2>
               <div className="space-y-3">
                 {[
-                  { v: "cod" as const,  emoji: "💵", title: "Cash on Delivery (COD)", sub: "Pay when you receive your order" },
-                  { v: "bank" as const, emoji: "🏦", title: "Bank Transfer",          sub: "Transfer to our account — manual confirmation" },
+                  { v: "cod" as const,  emoji: "💵", title: "Thanh toán khi nhận hàng (COD)", sub: "Trả tiền mặt khi nhận hàng" },
+                  { v: "card" as const, emoji: "💳", title: "Thẻ tín dụng / QR Code",             sub: "Quét QR hoặc thẻ — xác nhận ngay" },
                 ].map(({ v, emoji, title, sub }) => (
                   <label key={v} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === v ? "border-[#7C2D12] bg-[#7C2D12]/5" : "border-gray-200 hover:border-gray-300"}`}>
                     <input type="radio" name="payment" checked={paymentMethod === v} onChange={() => setPaymentMethod(v)} className="accent-[#7C2D12]" />
@@ -308,13 +308,12 @@ export default function CheckoutPage() {
                     </div>
                   </label>
                 ))}
-                {paymentMethod === "bank" && (
-                  <div className="ml-4 p-4 bg-blue-50 rounded-xl border border-blue-200 text-sm">
-                    <div className="font-semibold text-blue-800 mb-2">Bank Transfer Details</div>
-                    <div><span className="text-gray-500">Bank:</span> <span className="font-medium">Vietcombank</span></div>
-                    <div><span className="text-gray-500">Account:</span> <span className="font-medium">1234 5678 9012</span></div>
-                    <div><span className="text-gray-500">Name:</span> <span className="font-medium">ALE FARMS JSC</span></div>
-                    <p className="text-blue-600 text-xs mt-2">⚠ Include your order code as reference.</p>
+                {paymentMethod === "card" && (
+                  <div className="ml-4 p-4 bg-green-50 rounded-xl border border-green-200 text-sm">
+                    <div className="flex items-center gap-2 text-green-800 font-semibold mb-1">
+                      💳 Thanh toán QR / Thẻ tín dụng
+                    </div>
+                    <p className="text-green-700 text-xs">Mã QR sẽ hiển thị ngay sau khi đặt hàng. Quét để thanh toán tức thì.</p>
                   </div>
                 )}
               </div>

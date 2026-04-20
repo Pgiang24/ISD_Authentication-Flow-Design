@@ -2,8 +2,10 @@
 // orders: recipient_name, recipient_phone, status ENUM chữ hoa ('Pending'...)
 // payments: bảng riêng (payment_method, payment_status, amount)
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'ale_farm_secret_change_in_prod';
 
 // GET /api/orders — US6/US7: danh sách đơn cho admin
 router.get('/', async (req, res) => {
@@ -169,7 +171,7 @@ router.post('/', async (req, res) => {
     }
 
     // Tạo bản ghi payment
-    const pmMethod = paymentMethod === 'bank' ? 'Bank Transfer' : 'COD';
+    const pmMethod = (paymentMethod === 'bank' || paymentMethod === 'card') ? 'Bank Transfer' : 'COD';
     await client.query(
       `INSERT INTO payments (order_id, payment_method, payment_status, amount)
        VALUES ($1,$2,'Pending',$3)`,
