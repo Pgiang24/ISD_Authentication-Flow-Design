@@ -12,7 +12,6 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "pending", "confirmed", "processing", "shipped", "delivered", "cancelled",
 ];
 
-// US1 business rule: status tabs phải đủ 7 giá trị approved
 const REQUIRED_STATUSES = new Set(STATUS_OPTIONS);
 const STATUS_CONFIG_VALID = STATUS_OPTIONS.length === 6 && STATUS_OPTIONS.every(s => REQUIRED_STATUSES.has(s));
 
@@ -31,6 +30,33 @@ const paymentConfig: Record<string, string> = {
   failed:  "bg-red-100 text-red-700",
 };
 
+// FIX: chuẩn hoá payment method về 1 trong 2 giá trị: "bank_transfer" | "cod"
+// Backend có thể trả về nhiều dạng: 'Bank Transfer', 'bank transfer', 'bank', 'card', 'bank_transfer'
+function normalizePaymentMethod(raw: string | undefined | null): "bank_transfer" | "cod" {
+  if (!raw) return "cod";
+  const val = raw.toLowerCase().trim();
+  if (
+    val === "bank transfer" ||
+    val === "bank_transfer" ||
+    val === "bank" ||
+    val === "card" ||
+    val === "qr" ||
+    val === "qr code" ||
+    val === "credit card"
+  ) {
+    return "bank_transfer";
+  }
+  return "cod";
+}
+
+// FIX: label + icon dựa trên normalized value
+function getPaymentLabel(method: "bank_transfer" | "cod"): { label: string; emoji: string } {
+  if (method === "bank_transfer") {
+    return { label: "Chuyển khoản / QR", emoji: "📱" };
+  }
+  return { label: "Cash on Delivery", emoji: "💵" };
+}
+
 interface MappedOrder {
   id:            string;
   order_id?:     number;
@@ -41,7 +67,7 @@ interface MappedOrder {
   date:          string;
   total:         number;
   status:        OrderStatus;
-  paymentMethod: string;
+  paymentMethod: "bank_transfer" | "cod";
   paymentStatus: string;
   items:         { name: string; qty: number; price: number; weight: string }[];
 }
@@ -57,7 +83,8 @@ function mapOrder(o: any): MappedOrder {
     date:          o.date          || (o.order_date ? String(o.order_date).split("T")[0] : ""),
     total:         Number(o.total  || o.total_amount   || 0),
     status:        (o.status       || "pending").toLowerCase() as OrderStatus,
-    paymentMethod: (o.paymentMethod || o.payment_method || "cod").toLowerCase(),
+    // FIX: dùng normalizePaymentMethod thay vì .toLowerCase() rồi so sánh thủ công
+    paymentMethod: normalizePaymentMethod(o.paymentMethod || o.payment_method),
     paymentStatus: (o.paymentStatus || o.payment_status || "pending").toLowerCase(),
     items: (o.items || []).map((i: any) => ({
       name:   i.name     || i.product_name || "",
@@ -78,11 +105,9 @@ function OrderDrawer({
 }) {
   const [localStatus, setLocalStatus] = useState<OrderStatus>(order.status);
   const [saving, setSaving]           = useState(false);
-  // US9: row-level error state
   const [actionError, setActionError] = useState<string | null>(null);
 
   const handleSave = async () => {
-    // US9: validate order existence trước khi save
     if (!order.order_id && !order.id) {
       setActionError("The selected order action could not be applied correctly.");
       return;
@@ -93,12 +118,13 @@ function OrderDrawer({
       await onStatusChange(order.id, localStatus);
       onClose();
     } catch (e: any) {
-      // US9: error message khi action fail
       setActionError(e.message || "The selected order action could not be applied correctly.");
     } finally {
       setSaving(false);
     }
   };
+
+  const payment = getPaymentLabel(order.paymentMethod);
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -112,7 +138,6 @@ function OrderDrawer({
         </div>
 
         <div className="p-5 space-y-5 flex-1 overflow-y-auto">
-          {/* US9: row-level action error */}
           {actionError && (
             <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -162,14 +187,13 @@ function OrderDrawer({
             </div>
           </div>
 
+          {/* FIX: dùng payment object từ getPaymentLabel, không còn check === "bank" */}
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Payment</h3>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <span className="text-xl">{order.paymentMethod === "bank" ? "🏦" : "💵"}</span>
+              <span className="text-xl">{payment.emoji}</span>
               <div>
-                <div className="text-sm font-medium text-gray-900">
-                  {order.paymentMethod === "bank" ? "Bank Transfer" : "Cash on Delivery"}
-                </div>
+                <div className="text-sm font-medium text-gray-900">{payment.label}</div>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${paymentConfig[order.paymentStatus] || paymentConfig.pending}`}>
                   {order.paymentStatus}
                 </span>
@@ -179,7 +203,6 @@ function OrderDrawer({
 
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Update Status</h3>
-            {/* US8 business rule: status config must be complete */}
             {!STATUS_CONFIG_VALID ? (
               <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
                 Order status filter is not configured correctly.
@@ -238,16 +261,12 @@ export default function OrderManagementPage() {
   const [selectedOrder, setSelectedOrder] = useState<MappedOrder | null>(null);
   const [page, setPage]                   = useState(1);
   const [sortDir, setSortDir]             = useState<"asc" | "desc">("desc");
-
-  // US9: validate order trước khi mở drawer
   const [rowActionError, setRowActionError] = useState<string | null>(null);
 
-  // De-duplicate: loại bỏ đơn hàng trùng id
   const orders: MappedOrder[] = rawOrders
     .map(mapOrder)
     .filter((o, i, arr) => arr.findIndex((x) => x.id === o.id) === i);
 
-  // US8 business rule: nếu status config không đủ → show error
   const statusConfigError = !STATUS_CONFIG_VALID
     ? "Order status filter is not configured correctly."
     : null;
@@ -272,31 +291,22 @@ export default function OrderManagementPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  // US9: validate order existence trước khi mở drawer
   const handleViewOrder = async (order: MappedOrder) => {
     setRowActionError(null);
-
-    // Kiểm tra order có id hợp lệ không
     if (!order.id) {
       setRowActionError("Order action is not configured correctly.");
       return;
     }
-
-    // US9: validate target order still exists (fetch từ server)
     const numId = order.order_id || Number(order.id.replace("ALE-ORDER-", ""));
     try {
-      await apiFetch(`/api/orders/${numId}/status`, { method: "HEAD" }).catch(() => {
-        // HEAD không supported → vẫn mở drawer
-      });
+      await apiFetch(`/api/orders/${numId}/status`, { method: "HEAD" }).catch(() => {});
       setSelectedOrder(order);
     } catch (e: any) {
-      // Order không còn tồn tại hoặc route bị lỗi
       if (e.message?.includes("404") || e.message?.includes("not found")) {
         setRowActionError("This order is no longer available.");
       } else {
         setRowActionError("Could not open the selected order action.");
       }
-      return;
     }
   };
 
@@ -320,7 +330,6 @@ export default function OrderManagementPage() {
         <p className="text-sm text-gray-500 mt-0.5">{orders.length} total orders</p>
       </div>
 
-      {/* API error banner */}
       {error && (
         <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
           <div className="flex items-center gap-2">
@@ -334,7 +343,6 @@ export default function OrderManagementPage() {
         </div>
       )}
 
-      {/* US8 business rule: status config error */}
       {statusConfigError && (
         <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -342,7 +350,6 @@ export default function OrderManagementPage() {
         </div>
       )}
 
-      {/* US9: row-level action error */}
       {rowActionError && (
         <div className="flex items-center justify-between gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
           <div className="flex items-center gap-2">
@@ -427,55 +434,57 @@ export default function OrderManagementPage() {
                   </td>
                 </tr>
               ) : (
-                paginated.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-sm font-medium text-[#7C2D12]">
-                        #{order.id.replace("ALE-ORDER-", "")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-gray-900">{order.customer}</div>
-                      <div className="text-xs text-gray-500">{order.phone}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{order.date || "—"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-sm font-bold text-gray-900">{formatPrice(order.total)}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs text-gray-500">
-                          {order.paymentMethod === "bank" ? "Bank Transfer" : "COD"}
+                paginated.map((order) => {
+                  // FIX: dùng getPaymentLabel thay vì check === "bank" inline
+                  const pm = getPaymentLabel(order.paymentMethod);
+                  return (
+                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-sm font-medium text-[#7C2D12]">
+                          #{order.id.replace("ALE-ORDER-", "")}
                         </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize w-fit ${paymentConfig[order.paymentStatus] || paymentConfig.pending}`}>
-                          {order.paymentStatus}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-gray-900">{order.customer}</div>
+                        <div className="text-xs text-gray-500">{order.phone}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{order.date || "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-sm font-bold text-gray-900">{formatPrice(order.total)}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-gray-700 font-medium flex items-center gap-1">
+                            <span>{pm.emoji}</span> {pm.label}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize w-fit ${paymentConfig[order.paymentStatus] || paymentConfig.pending}`}>
+                            {order.paymentStatus}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium border capitalize ${statusConfig[order.status]?.classes || "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                          {statusConfig[order.status]?.label || order.status}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium border capitalize ${statusConfig[order.status]?.classes || "bg-gray-100 text-gray-600 border-gray-200"}`}>
-                        {statusConfig[order.status]?.label || order.status}
-                      </span>
-                    </td>
-                    {/* US9: Action button luôn visible, gọi handleViewOrder để validate trước */}
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleViewOrder(order)}
-                        disabled={!!selectedOrder}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-[#7C2D12] hover:text-[#7C2D12] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="View order details"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> View
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleViewOrder(order)}
+                          disabled={!!selectedOrder}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-[#7C2D12] hover:text-[#7C2D12] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="View order details"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
         {filtered.length > PAGE_SIZE && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <div className="text-sm text-gray-500">
@@ -503,7 +512,6 @@ export default function OrderManagementPage() {
         )}
       </div>
 
-      {/* Order Detail Drawer */}
       {selectedOrder && (
         <OrderDrawer
           order={selectedOrder}

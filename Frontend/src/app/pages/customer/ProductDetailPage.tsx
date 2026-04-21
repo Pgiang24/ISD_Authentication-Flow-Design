@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Star, ShoppingCart, Zap, Clock, Shield, Leaf, ChevronLeft, Check, Tag, Plus, Minus } from "lucide-react";
+import { Star, ShoppingCart, Zap, Clock, Shield, Leaf, ChevronLeft, Check, Tag, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { formatPrice, Product, ProductVariant } from "../../data/products";
@@ -9,6 +9,13 @@ import { apiFetch } from "../../lib/api";
 import { useProduct } from "../../hooks/useProduct";
 import { useProducts } from "../../hooks/useProducts";
 import { useProductLang } from "../../hooks/useProductLang";
+
+// FIX BUG 2: type cho can-review response
+interface CanReviewResponse {
+  canReview: boolean;
+  reason?: 'not_logged_in' | 'not_purchased' | 'already_reviewed';
+  alreadyReviewed: boolean;
+}
 
 export default function ProductDetailPage() {
   const { id }       = useParams();
@@ -34,6 +41,11 @@ export default function ProductDetailPage() {
   const [myComment, setMyComment]         = useState("");
   const [submitting, setSubmitting]       = useState(false);
 
+  // FIX BUG 2: state cho purchased verification
+  const [canReviewInfo, setCanReviewInfo] = useState<CanReviewResponse | null>(null);
+  const [canReviewLoading, setCanReviewLoading] = useState(false);
+
+  // Load reviews
   useEffect(() => {
     if (!id) return;
     apiFetch<any[]>(`/api/products/${id}/reviews`)
@@ -41,6 +53,19 @@ export default function ProductDetailPage() {
       .catch(() => {})
       .finally(() => setReviewLoading(false));
   }, [id]);
+
+  // FIX BUG 2: load can-review status khi user đã đăng nhập
+  useEffect(() => {
+    if (!id || !user) {
+      setCanReviewInfo(null);
+      return;
+    }
+    setCanReviewLoading(true);
+    apiFetch<CanReviewResponse>(`/api/products/${id}/reviews/can-review`)
+      .then(setCanReviewInfo)
+      .catch(() => setCanReviewInfo({ canReview: false, reason: 'not_purchased', alreadyReviewed: false }))
+      .finally(() => setCanReviewLoading(false));
+  }, [id, user]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-32">
@@ -81,11 +106,11 @@ export default function ProductDetailPage() {
   const checkPromo = () => {
     const valid: Record<string, number> = { ALEFARMS10: 10, WELCOME20: 20, SUMMER15: 15 };
     const upper = promoInput.trim().toUpperCase();
-    if (!upper) { setPromoMsg({ text: "Please enter a promo code.", ok: false }); return; }
+    if (!upper) { setPromoMsg({ text: "Vui lòng nhập mã giảm giá.", ok: false }); return; }
     if (valid[upper]) {
-      setPromoMsg({ text: `Code applied! ${valid[upper]}% discount at checkout`, ok: true });
+      setPromoMsg({ text: `Áp dụng thành công! Giảm ${valid[upper]}% khi thanh toán`, ok: true });
     } else {
-      setPromoMsg({ text: "Invalid or expired promo code.", ok: false });
+      setPromoMsg({ text: "Mã giảm giá không hợp lệ.", ok: false });
     }
   };
 
@@ -95,23 +120,112 @@ export default function ProductDetailPage() {
     try {
       await apiFetch(`/api/products/${id}/reviews`, {
         method: "POST",
-        body: JSON.stringify({ userId: user?.id || null, rating: myRating, comment: myComment }),
+        body: JSON.stringify({ rating: myRating, comment: myComment }),
       });
       const updated = await apiFetch<any[]>(`/api/products/${id}/reviews`);
       setReviews(updated);
       setMyComment(""); setMyRating(5);
-    } catch {
-      alert(t("product.reviewError"));
+      // Cập nhật lại can-review sau khi submit thành công
+      setCanReviewInfo({ canReview: false, reason: 'already_reviewed', alreadyReviewed: true });
+    } catch (err: any) {
+      alert(err.message || t("product.reviewError"));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Review date format theo ngôn ngữ
   const formatReviewDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString(
       i18n.language === "en" ? "en-US" : "vi-VN"
     );
+  };
+
+  // FIX BUG 2: render đúng UI cho phần review dựa trên canReviewInfo
+  const renderReviewForm = () => {
+    // Chưa đăng nhập
+    if (!user) {
+      return (
+        <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">
+          <p className="text-sm text-gray-500">
+            <Link to="/login" className="text-[#7C2D12] font-semibold hover:underline">
+              {t("product.loginToReview")}
+            </Link>
+            {t("product.loginToReviewSuffix")}
+          </p>
+        </div>
+      );
+    }
+
+    // Đang kiểm tra quyền
+    if (canReviewLoading) {
+      return (
+        <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-[#d35f1a] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-gray-500">Đang kiểm tra...</span>
+          </div>
+        </div>
+      );
+    }
+
+    // Đã review rồi
+    if (canReviewInfo?.alreadyReviewed) {
+      return (
+        <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-200">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+            <p className="text-sm text-green-700 font-medium">Bạn đã đánh giá sản phẩm này. Cảm ơn bạn!</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Chưa mua sản phẩm này
+    if (canReviewInfo?.reason === 'not_purchased') {
+      return (
+        <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
+          <div className="flex items-start gap-3">
+            <ShoppingBag className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Chỉ khách hàng đã mua mới có thể đánh giá</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Đánh giá chỉ dành cho những người đã mua và nhận sản phẩm này.
+              </p>
+              <Link to="/products"
+                className="inline-flex items-center gap-1.5 mt-2 text-xs text-[#7C2D12] font-semibold hover:underline">
+                <ShoppingCart className="w-3.5 h-3.5" /> Mua sản phẩm này
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // canReview === true → hiện form
+    if (canReviewInfo?.canReview) {
+      return (
+        <div className="mb-6 p-4 bg-[#FAF7F2] rounded-xl">
+          <p className="text-sm font-medium text-gray-700 mb-3">{t("product.writeReview")}</p>
+          <div className="flex gap-1 mb-3">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button key={star} onClick={() => setMyRating(star)}>
+                <Star className={`w-6 h-6 transition-colors ${star <= myRating ? "fill-[#D4A853] text-[#D4A853]" : "text-gray-300 hover:text-[#D4A853]"}`} />
+              </button>
+            ))}
+            <span className="text-sm text-gray-500 ml-2 self-center">{myRating}/5</span>
+          </div>
+          <textarea value={myComment} onChange={(e) => setMyComment(e.target.value)}
+            placeholder={t("product.reviewPlaceholder")} rows={3}
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#7C2D12] resize-none" />
+          <button onClick={handleSubmitReview} disabled={submitting || !myComment.trim()}
+            className="mt-2 px-6 py-2.5 bg-[#7C2D12] text-white rounded-xl text-sm font-semibold hover:bg-[#6B2510] disabled:opacity-50 transition-colors">
+            {submitting ? t("product.submitting") : t("product.submitReview")}
+          </button>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -158,7 +272,6 @@ export default function ProductDetailPage() {
                 </span>
               ))}
             </div>
-            {/* ── Tên sản phẩm theo ngôn ngữ ── */}
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{pName}</h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
@@ -284,7 +397,6 @@ export default function ProductDetailPage() {
       {/* ── Description + Certifications ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="md:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          {/* ── Mô tả theo ngôn ngữ ── */}
           <h2 className="text-lg font-bold text-gray-900 mb-3">{t("product.aboutProduct")}</h2>
           <p className="text-gray-600 leading-relaxed">{pLongDesc}</p>
         </div>
@@ -309,36 +421,8 @@ export default function ProductDetailPage() {
           {t("product.reviewsTitle", { count: reviews.length })}
         </h2>
 
-        {/* Form viết review */}
-        {user ? (
-          <div className="mb-6 p-4 bg-[#FAF7F2] rounded-xl">
-            <p className="text-sm font-medium text-gray-700 mb-3">{t("product.writeReview")}</p>
-            <div className="flex gap-1 mb-3">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button key={star} onClick={() => setMyRating(star)}>
-                  <Star className={`w-6 h-6 transition-colors ${star <= myRating ? "fill-[#D4A853] text-[#D4A853]" : "text-gray-300 hover:text-[#D4A853]"}`} />
-                </button>
-              ))}
-              <span className="text-sm text-gray-500 ml-2 self-center">{myRating}/5</span>
-            </div>
-            <textarea value={myComment} onChange={(e) => setMyComment(e.target.value)}
-              placeholder={t("product.reviewPlaceholder")} rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#7C2D12] resize-none" />
-            <button onClick={handleSubmitReview} disabled={submitting || !myComment.trim()}
-              className="mt-2 px-6 py-2.5 bg-[#7C2D12] text-white rounded-xl text-sm font-semibold hover:bg-[#6B2510] disabled:opacity-50 transition-colors">
-              {submitting ? t("product.submitting") : t("product.submitReview")}
-            </button>
-          </div>
-        ) : (
-          <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">
-            <p className="text-sm text-gray-500">
-              <Link to="/login" className="text-[#7C2D12] font-semibold hover:underline">
-                {t("product.loginToReview")}
-              </Link>
-              {t("product.loginToReviewSuffix")}
-            </p>
-          </div>
-        )}
+        {/* FIX BUG 2: form review được render bởi renderReviewForm() với đầy đủ logic */}
+        {renderReviewForm()}
 
         {/* Danh sách reviews */}
         {reviewLoading ? (
@@ -392,7 +476,6 @@ export default function ProductDetailPage() {
             {relatedProducts.map((p: Product) => {
               const v   = p.variants[0];
               const inS = p.variants.some((pv: ProductVariant) => pv.stock > 0);
-              // Lấy tên sản phẩm theo ngôn ngữ cho related card
               const rName = i18n.language === "en"
                 ? ((p as any).nameEn || p.name)
                 : p.name;

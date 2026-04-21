@@ -15,7 +15,6 @@ router.get('/', async (req, res) => {
     const conditions = [];
     let idx = 1;
 
-    // US7: filter theo status tab (chữ hoa theo ENUM)
     if (status && status !== 'all') {
       const statusMap = {
         pending: 'Pending', confirmed: 'Confirmed', processing: 'Processing',
@@ -28,7 +27,6 @@ router.get('/', async (req, res) => {
       params.push(mapped);
     }
 
-    // US7: search theo Order ID, customer name, phone
     if (search?.trim()) {
       const s = `%${search.trim()}%`;
       conditions.push(
@@ -75,7 +73,6 @@ router.get('/', async (req, res) => {
       params
     );
 
-    // Status counts cho tabs (US7)
     const { rows: statusCounts } = await pool.query(`
       SELECT status, COUNT(*)::INT AS count FROM orders GROUP BY status
     `);
@@ -83,7 +80,6 @@ router.get('/', async (req, res) => {
     res.json({
       orders: rows.map(o => ({
         ...o,
-        // Map sang field names frontend đang dùng
         id:            `ALE-ORDER-${String(o.order_id).padStart(3,'0')}`,
         order_code:    `ALE-ORDER-${String(o.order_id).padStart(3,'0')}`,
         customer:      o.recipient_name,
@@ -92,8 +88,10 @@ router.get('/', async (req, res) => {
         date:          o.order_date?.toISOString().split('T')[0],
         total:         Number(o.total_amount),
         status:        o.status,
-        paymentMethod: o.payment_method || 'COD',
-        paymentStatus: o.payment_status || 'Pending',
+        // FIX BUG 1: không fallback về 'COD' nếu payment_method có giá trị thực
+        // Chỉ fallback khi thực sự null (đơn cũ chưa có bản ghi payments)
+        paymentMethod: o.payment_method ?? 'COD',
+        paymentStatus: o.payment_status ?? 'Pending',
         items:         o.items || [],
       })),
       total:        countRows[0].total,
@@ -123,7 +121,6 @@ router.post('/', async (req, res) => {
     const shippingFee = subtotal >= 500000 ? 0 : 30000;
     const grandTotal  = subtotal + shippingFee;
 
-    // Tạo order — dùng recipient_name, recipient_phone theo schema v3
     const { rows: orderRows } = await client.query(`
       INSERT INTO orders
         (user_id, channel_id, status, total_amount,
@@ -162,7 +159,6 @@ router.post('/', async (req, res) => {
         [order_id, v.variant_id, item.qty, item.price]
       );
 
-      // Giảm stock trong bảng inventory
       await client.query(
         `UPDATE inventory SET stock_quantity = stock_quantity - $1, last_updated = NOW()
          WHERE variant_id = $2`,
@@ -170,8 +166,22 @@ router.post('/', async (req, res) => {
       );
     }
 
-    // Tạo bản ghi payment
-    const pmMethod = (paymentMethod === 'bank' || paymentMethod === 'card') ? 'Bank Transfer' : 'COD';
+    // FIX BUG 1: Map payment method từ frontend sang giá trị chuẩn lưu DB
+    // Frontend gửi: 'cod' | 'bank_transfer'
+    // DB lưu: 'COD' | 'Bank Transfer'
+    let pmMethod;
+    switch (paymentMethod) {
+      case 'bank_transfer':
+      case 'bank':
+      case 'card':
+        pmMethod = 'Bank Transfer';
+        break;
+      case 'cod':
+      default:
+        pmMethod = 'COD';
+        break;
+    }
+
     await client.query(
       `INSERT INTO payments (order_id, payment_method, payment_status, amount)
        VALUES ($1,$2,'Pending',$3)`,
@@ -193,7 +203,6 @@ router.post('/', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    // Chấp nhận lowercase lẫn Title Case
     const statusMap = {
       pending: 'Pending', confirmed: 'Confirmed', processing: 'Processing',
       shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled',
@@ -248,12 +257,13 @@ router.get('/my', async (req, res) => {
         s.estimated_delivery,
         JSON_AGG(
           JSON_BUILD_OBJECT(
-            'name',    p.product_name,
-            'name_en', p.name_en,
-            'qty',     oi.quantity,
-            'price',   oi.unit_price,
-            'weight',  pv.weight,
-            'image',   p.image_url
+            'name',       p.product_name,
+            'name_en',    p.name_en,
+            'qty',        oi.quantity,
+            'price',      oi.unit_price,
+            'weight',     pv.weight,
+            'image',      p.image_url,
+            'product_id', p.product_id
           ) ORDER BY oi.order_item_id
         ) FILTER (WHERE oi.order_item_id IS NOT NULL) AS items
       FROM orders o
@@ -280,8 +290,8 @@ router.get('/my', async (req, res) => {
       phone:            o.recipient_phone,
       address:          [o.address, o.district, o.city, o.ward].filter(Boolean).join(', '),
       deliveryNotes:    o.delivery_notes,
-      paymentMethod:    o.payment_method || 'COD',
-      paymentStatus:    o.payment_status || 'Pending',
+      paymentMethod:    o.payment_method ?? 'COD',
+      paymentStatus:    o.payment_status ?? 'Pending',
       tracking:         o.tracking_number,
       shippingCompany:  o.shipping_company,
       shippingStatus:   o.shipping_status,
@@ -295,11 +305,10 @@ router.get('/my', async (req, res) => {
   }
 });
 
-// ── GET /api/orders/track/:code — tra cứu theo mã đơn (không cần đăng nhập) ──
+// ── GET /api/orders/track/:code ──────────────────────────────────────────────
 router.get('/track/:code', async (req, res) => {
   try {
     const code = req.params.code.trim().toUpperCase();
-    // Trích số từ mã đơn: ALE-ORDER-021 → 21
     const numMatch = code.match(/(\d+)$/);
     if (!numMatch) return res.status(404).json({ error: 'Order not found.' });
     const orderId = parseInt(numMatch[1], 10);
@@ -347,8 +356,8 @@ router.get('/track/:code', async (req, res) => {
       recipient:        o.recipient_name,
       phone:            o.recipient_phone,
       address:          [o.address, o.district, o.city, o.ward].filter(Boolean).join(', '),
-      paymentMethod:    o.payment_method || 'COD',
-      paymentStatus:    o.payment_status || 'Pending',
+      paymentMethod:    o.payment_method ?? 'COD',
+      paymentStatus:    o.payment_status ?? 'Pending',
       tracking:         o.tracking_number,
       shippingCompany:  o.shipping_company,
       shippingStatus:   o.shipping_status,
