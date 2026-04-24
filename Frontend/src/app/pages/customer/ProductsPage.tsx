@@ -1,321 +1,293 @@
-import { useState, useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Star, ShoppingCart, Filter, X, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Search, X, Star, ShoppingCart, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useProducts } from "../../hooks/useProducts";
-import { useProductLang } from "../../hooks/useProductLang";
-import { formatPrice, Product } from "../../data/products";
 import { useCart } from "../../context/CartContext";
+import { useProductLang } from "../../hooks/useProductLang";
+import { formatPrice, Product, ProductVariant } from "../../data/products";
 
-type Category = "all" | "pork" | "buffalo" | "poultry" | "sausage";
+// ── Categories (dùng slug từ DB) ─────────────────────────────────────────────
+const CATEGORY_OPTIONS = [
+  { value: "all",              label: "Tất cả",          labelEn: "All" },
+  { value: "dried-smoked-meat",label: "Thịt gác bếp",    labelEn: "Dried Smoked Meat" },
+  { value: "smoked-meat",      label: "Thịt hun khói",   labelEn: "Smoked Meat" },
+  { value: "sausage",          label: "Lạp xưởng",      labelEn: "Sausage" },
+  { value: "spices-sauces",    label: "Gia vị",          labelEn: "Spices & Sauces" },
+  { value: "combo-sets",       label: "Combo",           labelEn: "Combo Sets" },
+];
 
-function useCategories() {
-  const { t } = useTranslation();
-  return [
-    { key: "all",     label: t("products.categories.all") },
-    { key: "buffalo", label: t("products.categories.buffalo") },
-    { key: "pork",    label: t("products.categories.pork") },
-    { key: "sausage", label: t("products.categories.sausage") },
-    { key: "poultry", label: t("products.categories.poultry") },
-  ];
-}
+const SORT_OPTIONS = [
+  { value: "featured",   labelVi: "Nổi bật",          labelEn: "Featured"     },
+  { value: "rating",     labelVi: "Đánh giá cao nhất", labelEn: "Top Rated"    },
+  { value: "price-asc",  labelVi: "Giá: Thấp → Cao",  labelEn: "Price: Low → High" },
+  { value: "price-desc", labelVi: "Giá: Cao → Thấp",  labelEn: "Price: High → Low" },
+];
 
+// ── Product Card ─────────────────────────────────────────────────────────────
 function ProductCard({ product }: { product: Product }) {
-  const { t } = useTranslation();
-  const { addToCart } = useCart();
-  const { pName, pDesc } = useProductLang(product);
-  const defaultVariant = product.variants[0];
-  const inStock = product.variants.some((v) => v.stock > 0);
-  const [comboOpen, setComboOpen] = useState(false);
+  const { i18n, t }  = useTranslation();
+  const { addToCart }= useCart();
+  const { pName }    = useProductLang(product);
+  const [added,      setAdded] = useState(false);
 
-  if (!defaultVariant) return null;
+  const variant = product.variants[0];
+  const inStock = product.variants.some((v: ProductVariant) => v.stock > 0);
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!inStock) return;
+    addToCart(product, variant.weight, 1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  };
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group border border-gray-100 flex flex-col">
-      <Link to={`/product/${product.id}`} className="block relative overflow-hidden flex-shrink-0">
-        <img src={product.image} alt={pName} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
-        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-          {!inStock && <span className="px-2.5 py-1 bg-gray-800/80 text-white text-xs rounded-full font-medium">{t("product.outOfStock")}</span>}
-          {product.isCombo && <span className="px-2.5 py-1 bg-purple-600 text-white text-xs rounded-full font-medium">{t("product.combo")}</span>}
-          {product.tags.includes("bestseller") && inStock && !product.isCombo && <span className="px-2.5 py-1 bg-[#d35f1a] text-white text-xs rounded-full font-medium">{t("product.bestSeller")}</span>}
-          {product.tags.includes("premium") && inStock && !product.isCombo && <span className="px-2.5 py-1 bg-[#D4A853] text-white text-xs rounded-full font-medium">{t("product.premium")}</span>}
-        </div>
-      </Link>
-
-      <div className="p-4 flex flex-col flex-1">
-        <Link to={`/product/${product.id}`} className="flex-1">
-          <h3 className="font-semibold text-gray-900 group-hover:text-[#d35f1a] transition-colors leading-snug text-sm">{pName}</h3>
-          <p className="text-gray-500 text-xs mt-1 line-clamp-2 leading-relaxed">{pDesc}</p>
-        </Link>
-
-        <div className="flex items-center gap-1 mt-2">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? "fill-[#D4A853] text-[#D4A853]" : "text-gray-200"}`} />
-          ))}
-          <span className="text-xs font-semibold text-gray-700 ml-0.5">{product.rating}</span>
-          <span className="text-xs text-gray-400">
-            ({product.reviews > 0 ? `${product.reviews} ${t("product.reviews")}` : t("product.noReview")})
+    <Link to={`/product/${product.id}`}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 flex flex-col">
+      <div className="relative overflow-hidden aspect-square bg-gray-100">
+        <img src={product.image} alt={pName}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        {product.tag && (
+          <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#7C2D12] text-white text-xs font-bold rounded-full">
+            {product.tag}
           </span>
-        </div>
-
-        <div className="flex items-center justify-between mt-3">
-          <div>
-            <div className="font-bold text-[#d35f1a]">{formatPrice(defaultVariant.price)}</div>
-            <div className="text-xs text-gray-400">{defaultVariant.weight}</div>
-          </div>
-          <button
-            onClick={() => inStock && addToCart(product, defaultVariant.weight)}
-            disabled={!inStock}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-              inStock ? "bg-[#d35f1a] text-white hover:bg-[#c05518] active:scale-95" : "bg-gray-100 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            {t("product.addToCart")}
-          </button>
-        </div>
-
-        {product.isCombo && product.comboItems && product.comboItems.length > 0 && (
-          <div className="mt-3 border-t border-gray-100 pt-3">
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setComboOpen((prev) => !prev); }}
-              className="w-full flex items-center justify-between text-xs font-semibold text-purple-700 hover:text-purple-900 transition-colors"
-            >
-              <span>{t("product.viewCombo", { count: product.comboItems.length })}</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${comboOpen ? "rotate-180" : ""}`} />
-            </button>
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${comboOpen ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0"}`}>
-              <div className="space-y-1.5">
-                {product.comboItems.map((item, idx) => (
-                  <div key={item.id} className="flex items-start gap-2 p-2 bg-purple-50 rounded-lg border border-purple-100">
-                    <div className="w-5 h-5 rounded-full bg-purple-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{idx + 1}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-semibold text-gray-800 leading-snug">{item.name}</span>
-                        {item.price > 0 && <span className="text-[10px] font-bold text-[#d35f1a] flex-shrink-0">{formatPrice(item.price)}</span>}
-                      </div>
-                      <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{item.description}</div>
-                      {item.weight && <div className="text-[10px] text-purple-600 font-medium mt-0.5">{item.weight}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {product.comboItems.some((c) => c.price > 0) && (
-                <div className="mt-1.5 p-1.5 bg-[#d35f1a]/10 rounded-lg flex items-center justify-between">
-                  <span className="text-[10px] text-gray-500 line-through">{formatPrice(product.comboItems.reduce((s, c) => s + c.price, 0))}</span>
-                  <span className="text-xs font-bold text-[#d35f1a]">Combo: {formatPrice(defaultVariant.price)}</span>
-                </div>
-              )}
-            </div>
+        )}
+        {!inStock && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="bg-white/90 text-gray-700 text-xs font-bold px-3 py-1 rounded-full">
+              {t("product.outOfStock")}
+            </span>
           </div>
         )}
       </div>
-    </div>
+
+      <div className="p-4 flex flex-col flex-1">
+        <h3 className="font-semibold text-gray-900 group-hover:text-[#7C2D12] transition-colors leading-snug line-clamp-2">
+          {pName}
+        </h3>
+
+        <div className="flex items-center gap-1.5 mt-1.5">
+          <div className="flex items-center gap-0.5">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? "fill-[#D4A853] text-[#D4A853]" : "text-gray-200"}`} />
+            ))}
+          </div>
+          <span className="text-xs text-gray-500">({product.reviews})</span>
+        </div>
+
+        <div className="mt-auto pt-3 flex items-center justify-between">
+          <div>
+            <div className="font-bold text-[#7C2D12] text-lg">{formatPrice(variant.price)}</div>
+            <div className="text-xs text-gray-400">{variant.weight}</div>
+          </div>
+          <button onClick={handleAdd} disabled={!inStock}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+              added    ? "bg-[#2D6A4F] text-white scale-110" :
+              inStock  ? "bg-[#7C2D12]/10 text-[#7C2D12] hover:bg-[#7C2D12] hover:text-white" :
+                         "bg-gray-100 text-gray-300 cursor-not-allowed"
+            }`}>
+            <ShoppingCart className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </Link>
   );
 }
 
+// ── Main Page ────────────────────────────────────────────────────────────────
 export default function ProductsPage() {
-  const { t } = useTranslation();
-  const CATEGORIES = useCategories();
-  const [searchParams] = useSearchParams();
-  const initialCategory = (searchParams.get("category") as Category) || "all";
-  const [category, setCategory]           = useState<Category>(initialCategory);
-  const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
-  const [sortBy, setSortBy]               = useState("featured");
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const { t, i18n }               = useTranslation();
+  const { products, loading, error, refetch } = useProducts();
 
-  const { products, loading, error } = useProducts();
+  // Search state (US22)
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [category,      setCategory]      = useState("all");
+  const [sortBy,        setSortBy]        = useState("featured");
+  const [showFilters,   setShowFilters]   = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  const allWeights = useMemo(() => {
-    const weights = new Set<string>();
-    products.forEach((p) => p.variants.forEach((v) => weights.add(v.weight)));
-    return Array.from(weights);
-  }, [products]);
+  // BR02: maxlength 100
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.slice(0, 100); // AC10
+    setSearchKeyword(val);
+  }, []);
 
+  const handleClearSearch = useCallback(() => {
+    setSearchKeyword("");
+    searchRef.current?.focus(); // AC07: cursor back to input
+  }, []);
+
+  // ── Filter + Search + Sort (client-side, AC04 real-time) ─────────────────
   const filtered = useMemo(() => {
-    let list = products.filter((p) => category === "all" || p.category === category);
-    if (selectedWeights.length > 0)
-      list = list.filter((p) => p.variants.some((v) => selectedWeights.includes(v.weight)));
-    if (sortBy === "price-asc")       list = [...list].sort((a, b) => a.basePrice - b.basePrice);
-    else if (sortBy === "price-desc") list = [...list].sort((a, b) => b.basePrice - a.basePrice);
-    else if (sortBy === "rating")     list = [...list].sort((a, b) => b.rating - a.rating);
-    else list = [...list].sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    let list = [...products];
+
+    // BR05: chỉ active products (API đã filter, nhưng double-check)
+    list = list.filter((p: Product) => p.is_active !== false);
+
+    // Category filter (AC05: kết hợp với search)
+    if (category !== "all") {
+      list = list.filter((p: Product) =>
+        p.category === category ||
+        (p as any).categorySlug === category ||
+        (p as any).category_slug === category
+      );
+    }
+
+    // Search filter (BR03: case-insensitive, BR04: có dấu)
+    if (searchKeyword.trim()) {
+      const q = searchKeyword.trim().toLowerCase();
+      list = list.filter((p: Product) => {
+        const nameVi = (p.name || "").toLowerCase();
+        const nameEn = ((p as any).nameEn || (p as any).name_en || "").toLowerCase();
+        return nameVi.includes(q) || nameEn.includes(q);
+      });
+    }
+
+    // Sort
+    switch (sortBy) {
+      case "rating":     list.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
+      case "price-asc":  list.sort((a, b) => a.variants[0].price - b.variants[0].price); break;
+      case "price-desc": list.sort((a, b) => b.variants[0].price - a.variants[0].price); break;
+      default:           list.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    }
+
     return list;
-  }, [products, category, selectedWeights, sortBy]);
+  }, [products, searchKeyword, category, sortBy]);
 
-  const toggleWeight = (w: string) =>
-    setSelectedWeights((prev) => prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]);
+  const isVi = i18n.language !== "en";
 
-  const clearAll = () => { setCategory("all"); setSelectedWeights([]); };
-  const hasFilter = category !== "all" || selectedWeights.length > 0;
-
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-32 gap-4">
-      <div className="w-10 h-10 border-4 border-[#d35f1a] border-t-transparent rounded-full animate-spin" />
-      <p className="text-gray-500 text-sm">{t("products.loading")}</p>
-    </div>
-  );
-
+  // ── Error state (AC11, BR11) ─────────────────────────────────────────────
   if (error) return (
-    <div className="flex flex-col items-center justify-center py-32 gap-3">
-      <div className="text-4xl">⚠️</div>
-      <p className="font-semibold text-gray-700">{t("products.loadError")}</p>
-      <p className="text-sm text-red-500">{error}</p>
-      <button onClick={() => window.location.reload()} className="mt-2 px-5 py-2 bg-[#7C2D12] text-white rounded-full text-sm font-semibold hover:bg-[#6B2510]">
-        {t("products.retry")}
+    <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+      <div className="text-5xl mb-4">⚠️</div>
+      <p className="text-gray-700 font-medium mb-4">Không thể tải danh sách sản phẩm. Vui lòng thử lại.</p>
+      <button onClick={refetch}
+        className="inline-flex items-center gap-2 px-6 py-3 bg-[#7C2D12] text-white rounded-xl font-semibold hover:bg-[#6B2510]">
+        <RefreshCw className="w-4 h-4" /> Thử lại
       </button>
     </div>
   );
 
-  const FilterPanel = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
-          <Filter className="w-4 h-4" /> {t("products.filters")}
-        </h3>
-        {hasFilter && (
-          <button onClick={clearAll} className="text-xs text-[#7C2D12] hover:underline flex items-center gap-1">
-            <X className="w-3 h-3" /> {t("products.clearFilters")}
-          </button>
-        )}
-      </div>
-      <div>
-        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("products.category")}</h4>
-        <div className="space-y-1">
-          {CATEGORIES.map((cat) => (
-            <button key={cat.key} onClick={() => setCategory(cat.key as Category)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all ${
-                category === cat.key ? "bg-[#7C2D12] text-white font-medium" : "text-gray-600 hover:bg-gray-100"
-              }`}>
-              <span>{cat.label}</span>
-              <span className={`text-xs ${category === cat.key ? "text-white/70" : "text-gray-400"}`}>
-                {cat.key === "all" ? products.length : products.filter((p) => p.category === cat.key).length}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-      {allWeights.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("products.weight")}</h4>
-          <div className="flex flex-wrap gap-2">
-            {allWeights.map((w) => (
-              <button key={w} onClick={() => toggleWeight(w)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                  selectedWeights.includes(w) ? "bg-[#7C2D12] text-white border-[#7C2D12]" : "border-gray-200 text-gray-600 hover:border-[#7C2D12] hover:text-[#7C2D12]"
-                }`}>
-                {w}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-[#FAF7F2]">
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <p className="text-[#D4A853] italic text-sm font-medium mb-1">{t("products.heroTag")}</p>
-          <h1 className="text-3xl font-black text-gray-900">{t("products.title")}</h1>
-          <p className="text-gray-500 text-sm mt-1">{products.length} {t("products.itemsSuffix")}</p>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 pb-0">
-          <div className="flex gap-2 overflow-x-auto pb-4">
-            {CATEGORIES.map((cat) => (
-              <button key={cat.key} onClick={() => setCategory(cat.key as Category)}
-                className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-semibold transition-all ${
-                  category === cat.key ? "bg-[#d35f1a] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}>
-                {cat.label}
-                <span className={`ml-1.5 text-xs ${category === cat.key ? "text-white/75" : "text-gray-400"}`}>
-                  ({cat.key === "all" ? products.length : products.filter((p) => p.category === cat.key).length})
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isVi ? "Đặc sản Tây Bắc" : "Northwest Specialties"}
+        </h1>
+        {/* AC09: số lượng kết quả real-time */}
+        <p className="text-sm text-gray-500 mt-1">
+          {loading ? "Đang tải..." : `${filtered.length} sản phẩm`}
+        </p>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex gap-8">
-          <aside className="hidden lg:block w-56 flex-shrink-0">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 sticky top-24">
-              <FilterPanel />
-            </div>
-          </aside>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-5 gap-3">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setMobileFilterOpen(true)}
-                  className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-[#7C2D12] transition-all">
-                  <SlidersHorizontal className="w-4 h-4" /> {t("products.filters")}
-                  {hasFilter && <span className="w-2 h-2 bg-[#7C2D12] rounded-full" />}
+      {/* ── Search + Filter Bar ── */}
+      {!loading && (
+        <div className="mb-6 space-y-3">
+          <div className="flex gap-3">
+            {/* Search input (US22) */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={searchKeyword}
+                onChange={handleSearchChange}
+                maxLength={100} // AC10
+                placeholder={isVi ? "Tìm sản phẩm..." : "Search products..."}
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-[#7C2D12] focus:ring-2 focus:ring-[#7C2D12]/10 transition-all"
+              />
+              {/* AC07: clear button */}
+              {searchKeyword && (
+                <button onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 rounded">
+                  <X className="w-3.5 h-3.5" />
                 </button>
-                <p className="text-sm text-gray-500">
-                  <span className="font-semibold text-gray-900">{filtered.length}</span> {t("products.itemsSuffix")}
-                  {hasFilter && <button onClick={clearAll} className="ml-2 text-[#7C2D12] hover:underline text-xs">{t("products.clearAllFilters")}</button>}
-                </p>
-              </div>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-                className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white outline-none focus:border-[#7C2D12] flex-shrink-0">
-                <option value="featured">{t("products.sortFeatured")}</option>
-                <option value="rating">{t("products.sortRating")}</option>
-                <option value="price-asc">{t("products.sortPriceAsc")}</option>
-                <option value="price-desc">{t("products.sortPriceDesc")}</option>
-              </select>
+              )}
             </div>
 
-            {hasFilter && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {category !== "all" && (
-                  <span className="flex items-center gap-1.5 px-3 py-1 bg-[#7C2D12]/10 text-[#7C2D12] text-xs font-medium rounded-full">
-                    {CATEGORIES.find((c) => c.key === category)?.label}
-                    <button onClick={() => setCategory("all")}><X className="w-3 h-3" /></button>
-                  </span>
-                )}
-                {selectedWeights.map((w) => (
-                  <span key={w} className="flex items-center gap-1.5 px-3 py-1 bg-[#7C2D12]/10 text-[#7C2D12] text-xs font-medium rounded-full">
-                    {w}<button onClick={() => toggleWeight(w)}><X className="w-3 h-3" /></button>
-                  </span>
+            {/* Filter toggle (mobile) */}
+            <button onClick={() => setShowFilters(v => !v)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                showFilters ? "bg-[#7C2D12] text-white border-[#7C2D12]" : "bg-white text-gray-600 border-gray-200 hover:border-[#7C2D12]"
+              }`}>
+              <SlidersHorizontal className="w-4 h-4" />
+              <span className="hidden sm:inline">Bộ lọc</span>
+            </button>
+          </div>
+
+          {/* Filters row */}
+          {(showFilters || window.innerWidth >= 640) && (
+            <div className="flex flex-wrap gap-2">
+              {/* Category tabs */}
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORY_OPTIONS.map(opt => (
+                  <button key={opt.value}
+                    onClick={() => setCategory(opt.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                      category === opt.value
+                        ? "bg-[#7C2D12] text-white border-[#7C2D12]"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-[#7C2D12]"
+                    }`}>
+                    {isVi ? opt.label : opt.labelEn}
+                  </button>
                 ))}
               </div>
-            )}
 
-            {filtered.length === 0 ? (
-              <div className="text-center py-24 text-gray-500">
-                <div className="text-5xl mb-4">🔍</div>
-                <p className="font-semibold text-gray-700 text-lg mb-1">{t("products.emptyTitle")}</p>
-                <p className="text-sm text-gray-400 mb-4">{t("products.emptyDesc")}</p>
-                <button onClick={clearAll} className="px-6 py-2.5 bg-[#7C2D12] text-white rounded-full text-sm font-semibold hover:bg-[#6B2510] transition-colors">
-                  {t("products.clearAllFilters")}
-                </button>
+              {/* Sort */}
+              <div className="ml-auto">
+                <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-600 outline-none focus:border-[#7C2D12] cursor-pointer">
+                  {SORT_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {isVi ? opt.labelVi : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 items-start">
-                {filtered.map((p) => <ProductCard key={p.id} product={p} />)}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {mobileFilterOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileFilterOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <span className="font-bold text-gray-900 text-lg">{t("products.filters")}</span>
-              <button onClick={() => setMobileFilterOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl"><X className="w-5 h-5" /></button>
             </div>
-            <FilterPanel />
-            <button onClick={() => setMobileFilterOpen(false)}
-              className="w-full mt-6 py-3.5 bg-[#7C2D12] text-white rounded-xl font-semibold hover:bg-[#6B2510] transition-colors">
-              {t("products.viewProducts", { count: filtered.length })}
-            </button>
-          </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Loading skeleton ── */}
+      {loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse">
+              <div className="aspect-square bg-gray-200" />
+              <div className="p-4 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-5 bg-gray-200 rounded w-1/3 mt-3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Product grid ── */}
+      {!loading && filtered.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          {filtered.map((product: Product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
+
+      {/* ── AC06: Empty state khi không có kết quả ── */}
+      {!loading && filtered.length === 0 && products.length > 0 && (
+        <div className="text-center py-20">
+          <div className="text-5xl mb-4">🔍</div>
+          <h3 className="text-lg font-bold text-gray-800 mb-2">Không tìm thấy sản phẩm nào phù hợp.</h3>
+          <p className="text-sm text-gray-500 mb-6">Vui lòng thử từ khóa khác hoặc xóa bớt bộ lọc.</p>
+          <button
+            onClick={() => { setSearchKeyword(""); setCategory("all"); }}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#7C2D12] text-white rounded-xl text-sm font-semibold hover:bg-[#6B2510] transition-colors">
+            <X className="w-4 h-4" /> Xóa bộ lọc
+          </button>
         </div>
       )}
     </div>
