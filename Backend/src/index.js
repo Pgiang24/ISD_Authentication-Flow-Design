@@ -2,11 +2,12 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import productsRouter   from "./routes/products.js";
-import ordersRouter     from "./routes/orders.js";
-import usersRouter      from "./routes/users.js";
-import inventoryRouter  from "./routes/inventory.js";
-import dashboardRouter  from "./routes/dashboard.js";
+import productsRouter      from "./routes/products.js";
+import ordersRouter        from "./routes/orders.js";
+import usersRouter         from "./routes/users.js";
+import inventoryRouter     from "./routes/inventory.js";
+import dashboardRouter     from "./routes/dashboard.js";
+import notificationsRouter from "./routes/notifications.js";
 
 dotenv.config();
 
@@ -15,11 +16,12 @@ const app = express();
 app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
-app.use("/api/products",  productsRouter);
-app.use("/api/orders",    ordersRouter);
-app.use("/api/users",     usersRouter);
-app.use("/api/inventory", inventoryRouter);
-app.use("/api/dashboard", dashboardRouter);
+app.use("/api/products",      productsRouter);
+app.use("/api/orders",        ordersRouter);
+app.use("/api/users",         usersRouter);
+app.use("/api/inventory",     inventoryRouter);
+app.use("/api/dashboard",     dashboardRouter);
+app.use("/api/notifications", notificationsRouter);
 
 app.get("/api/health", (_, res) => res.json({ status: "ok", db: "supabase-v3" }));
 
@@ -45,6 +47,9 @@ app.get("/", (_, res) => res.json({
     dashboardCategories: "GET  /api/dashboard/sales-by-category",
     dashboardOrdersMonth:"GET  /api/dashboard/orders-per-month",
     dashboardRecent:     "GET  /api/dashboard/recent-orders",
+    notifications:       "GET  /api/notifications",
+    markRead:            "PATCH /api/notifications/:id/read",
+    markAllRead:         "PATCH /api/notifications/read-all",
   },
 }));
 

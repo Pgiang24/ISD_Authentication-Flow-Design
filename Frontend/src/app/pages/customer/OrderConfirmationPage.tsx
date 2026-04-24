@@ -3,22 +3,18 @@ import { CheckCircle, Copy, Package, Truck, Home, Clock, RefreshCw, CheckCheck }
 import { useState, useEffect, useRef } from "react";
 import { formatPrice } from "../../data/products";
 
-// ── Config thanh toán ────────────────────────────────────────────────────────
-// Thay các giá trị này bằng thông tin tài khoản thật của bạn
 const BANK_CONFIG = {
-  bankId:      "970436",   // Vietcombank bank code (VietQR)
+  bankId:      "970436",
   accountNo:   "0965303994",
   accountName: "CONG TY ALE FARMS",
 };
 
-// Tạo URL QR VietQR (miễn phí, không cần API key)
 function makeQrUrl(amount: number, orderCode: string): string {
   const info = encodeURIComponent(`Thanh toan ${orderCode}`);
   const name = encodeURIComponent(BANK_CONFIG.accountName);
   return `https://img.vietqr.io/image/${BANK_CONFIG.bankId}-${BANK_CONFIG.accountNo}-compact2.png?amount=${Math.round(amount)}&addInfo=${info}&accountName=${name}`;
 }
 
-// ── Countdown timer ──────────────────────────────────────────────────────────
 function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => void }) {
   const [left, setLeft] = useState(seconds);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -39,7 +35,6 @@ function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => voi
 
   return (
     <div className="flex flex-col items-center gap-2">
-      {/* Ring progress */}
       <div className="relative w-14 h-14">
         <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
           <circle cx="28" cy="28" r="24" fill="none" stroke="#e5e7eb" strokeWidth="4" />
@@ -64,11 +59,10 @@ function Countdown({ seconds, onExpire }: { seconds: number; onExpire: () => voi
   );
 }
 
-// ── QR Payment Panel ──────────────────────────────────────────────────────────
 function QrPaymentPanel({ orderCode, total }: { orderCode: string; total: number }) {
-  const [paid,    setPaid]    = useState(false);
-  const [expired, setExpired] = useState(false);
-  const [imgError,setImgError]= useState(false);
+  const [paid,     setPaid]    = useState(false);
+  const [expired,  setExpired] = useState(false);
+  const [imgError, setImgError]= useState(false);
   const qrUrl = makeQrUrl(total, orderCode);
 
   if (paid) {
@@ -95,7 +89,8 @@ function QrPaymentPanel({ orderCode, total }: { orderCode: string; total: number
         <p className="text-sm text-gray-500 text-center max-w-xs">
           Vui lòng tải lại trang hoặc chuyển sang thanh toán chuyển khoản thủ công.
         </p>
-        <button onClick={() => setExpired(false)} className="flex items-center gap-2 px-4 py-2 bg-[#7C2D12] text-white rounded-xl text-sm font-semibold hover:bg-[#6B2510]">
+        <button onClick={() => setExpired(false)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#7C2D12] text-white rounded-xl text-sm font-semibold hover:bg-[#6B2510]">
           <RefreshCw className="w-4 h-4" /> Tạo lại QR
         </button>
       </div>
@@ -112,11 +107,9 @@ function QrPaymentPanel({ orderCode, total }: { orderCode: string; total: number
         <Countdown seconds={15 * 60} onExpire={() => setExpired(true)} />
       </div>
 
-      {/* QR Code */}
       <div className="flex justify-center">
         <div className="relative bg-white p-3 rounded-2xl border-2 border-[#7C2D12]/20 shadow-md inline-block">
           {imgError ? (
-            /* Fallback khi không load được VietQR (domain bị block...) */
             <div className="w-52 h-52 flex flex-col items-center justify-center gap-3 bg-gray-50 rounded-xl">
               <div className="text-4xl">💳</div>
               <p className="text-xs text-gray-500 text-center px-4">
@@ -131,7 +124,6 @@ function QrPaymentPanel({ orderCode, total }: { orderCode: string; total: number
               onError={() => setImgError(true)}
             />
           )}
-          {/* ALE logo overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-10 h-10 rounded-full bg-white border-2 border-[#7C2D12]/20 overflow-hidden shadow-sm">
               <img src="/images/logo.jpg" alt="" className="w-full h-full object-cover" />
@@ -140,7 +132,6 @@ function QrPaymentPanel({ orderCode, total }: { orderCode: string; total: number
         </div>
       </div>
 
-      {/* Thông tin tài khoản */}
       <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2 border border-gray-100">
         <div className="flex justify-between"><span className="text-gray-500">Ngân hàng</span><span className="font-medium">Vietcombank</span></div>
         <div className="flex justify-between"><span className="text-gray-500">Số tài khoản</span><span className="font-medium font-mono">{BANK_CONFIG.accountNo}</span></div>
@@ -159,7 +150,6 @@ function QrPaymentPanel({ orderCode, total }: { orderCode: string; total: number
         ⚠ Nhập <strong>đúng nội dung chuyển khoản</strong> là mã đơn hàng để hệ thống tự động xác nhận. Đơn hàng sẽ được xử lý trong vòng <strong>30 phút</strong> sau khi nhận thanh toán.
       </p>
 
-      {/* Nút xác nhận đã thanh toán (manual confirm) */}
       <button onClick={() => setPaid(true)}
         className="w-full py-3 bg-[#2D6A4F] hover:bg-[#245a42] text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors">
         <CheckCheck className="w-4 h-4" /> Tôi đã thanh toán xong
@@ -183,8 +173,14 @@ export default function OrderConfirmationPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isCard = paymentMethod === "card";
-  const isCod  = paymentMethod === "cod";
+  // FIX: nhận đúng value "bank_transfer" từ CheckoutPage
+  // Đồng thời giữ backward compat với value cũ "card" / "bank" nếu có đơn cũ
+  const isBankTransfer = (
+    paymentMethod === "bank_transfer" ||
+    paymentMethod === "bank" ||
+    paymentMethod === "card"
+  );
+  const isCod = !isBankTransfer;
 
   const steps = [
     {
@@ -195,9 +191,9 @@ export default function OrderConfirmationPage() {
     },
     {
       icon: Package,
-      label: isCard ? "Chờ xác nhận thanh toán" : "Đang xử lý",
-      status: isCard ? "current" : "done",
-      time:  isCard ? "Tự động sau khi nhận tiền" : "Đang xác nhận...",
+      label: isBankTransfer ? "Chờ xác nhận thanh toán" : "Đang xử lý",
+      status: isBankTransfer ? "current" : "done",
+      time:  isBankTransfer ? "Tự động sau khi nhận tiền" : "Đang xác nhận...",
     },
     {
       icon: Truck,
@@ -223,7 +219,7 @@ export default function OrderConfirmationPage() {
         </div>
         <h1 className="text-3xl font-black text-gray-900 mb-2">Đặt hàng thành công! 🎉</h1>
         <p className="text-gray-500 text-sm">
-          {isCard
+          {isBankTransfer
             ? "Vui lòng thanh toán trong 15 phút để xác nhận đơn hàng."
             : "Cảm ơn bạn đã đặt hàng. Chúng tôi sẽ liên hệ trước khi giao."}
         </p>
@@ -243,8 +239,8 @@ export default function OrderConfirmationPage() {
         <p className="text-xs text-gray-400 mt-2">Dùng mã này để theo dõi đơn hàng</p>
       </div>
 
-      {/* ── QR Payment (chỉ hiện khi chọn card) ── */}
-      {isCard && (
+      {/* ── QR Payment — chỉ hiện khi bank_transfer ── */}
+      {isBankTransfer && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border-2 border-[#7C2D12]/20 mb-5">
           <QrPaymentPanel orderCode={orderCode} total={total} />
         </div>
@@ -304,7 +300,7 @@ export default function OrderConfirmationPage() {
           <li>📦 Chúng tôi sẽ đóng gói đơn hàng cẩn thận bằng vật liệu an toàn thực phẩm</li>
           <li>📞 Shipper sẽ gọi điện trước khi giao hàng</li>
           <li>🚚 Thời gian giao hàng thường 2–4 ngày làm việc</li>
-          {isCard && <li>✅ Đơn hàng sẽ được xử lý ngay sau khi xác nhận thanh toán</li>}
+          {isBankTransfer && <li>✅ Đơn hàng sẽ được xử lý ngay sau khi xác nhận thanh toán</li>}
         </ul>
       </div>
 
