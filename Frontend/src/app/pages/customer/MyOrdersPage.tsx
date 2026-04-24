@@ -326,7 +326,7 @@ function OrderDrawer({
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function MyOrdersPage() {
-  const { user } = useAuth();
+  const { user, isAuthLoading } = useAuth();
   const navigate = useNavigate();
 
   const [orders,       setOrders]       = useState<Order[]>([]);
@@ -335,11 +335,12 @@ export default function MyOrdersPage() {
   const [selectedOrder,setSelectedOrder]= useState<Order | null>(null);
   const [page,         setPage]         = useState(1);
 
-  // AC01: redirect nếu chưa đăng nhập
+  // AC01: chờ auth load xong rồi mới redirect nếu chưa đăng nhập
   useEffect(() => {
+    if (isAuthLoading) return;
     if (!user) { navigate("/login"); return; }
     fetchOrders();
-  }, [user]);
+  }, [user, isAuthLoading]);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -368,6 +369,13 @@ export default function MyOrdersPage() {
   // Pagination
   const totalPages = Math.ceil(orders.length / PAGE_SIZE);
   const paginated  = orders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // ── Auth Loading ─────────────────────────────────────────────────────────
+  if (isAuthLoading) return (
+    <div className="max-w-3xl mx-auto px-4 py-20 flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-4 border-[#7C2D12] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return (

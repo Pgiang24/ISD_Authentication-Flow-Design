@@ -14,6 +14,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string }>;
   // US1: logout nhận reason để hiện đúng message trên login page
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem("ale_farms_user");
@@ -31,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try { setUser(JSON.parse(stored)); }
       catch { localStorage.removeItem("ale_farms_user"); }
     }
+    setIsAuthLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -74,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isAuthLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
